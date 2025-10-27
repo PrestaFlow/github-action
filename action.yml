@@ -1,0 +1,18 @@
+name: Upload PrestaFlow results
+author: PrestaFlow
+description: 'Send PrestaFlow results to you account'
+branding:
+  icon: 'check'
+  color: 'blue'
+inputs:
+  prestaflow_account_id:
+    description: 'PrestaFlow Account ID'
+    required: true
+  prestaflow_secret_key:
+    description: 'PrestaFlow Secret Key'
+    required: true
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.prestaflow_account_id }}
