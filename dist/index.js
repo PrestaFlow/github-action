@@ -60093,7 +60093,6 @@ async function run() {
       },
       formData: {
         file: fs.createReadStream(filePath),
-        metadata: JSON.stringify(metadata),
       },
     };
     req.post(options, (err, response, body) => {
