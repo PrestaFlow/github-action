@@ -30,9 +30,11 @@ async function run() {
         "Content-Type": "multipart/form-data",
         "X-Api-Token": token,
       },
+      /*
       formData: {
         file: fs.createReadStream(filePath),
       },
+      */
     };
     req.post(options, (err, response, body) => {
       if (!err) {
