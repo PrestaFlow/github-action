@@ -1,18 +1,22 @@
-name: Upload PrestaFlow results
-author: PrestaFlow
-description: 'Send PrestaFlow results to you account'
-branding:
-  icon: 'check'
-  color: 'blue'
+name: "Upload to PrestaFlow"
+description: "Uploads files to PrestaFlow via PrestaFlow API"
+author: "itsmeow"
 inputs:
-  prestaflow_account_id:
-    description: 'PrestaFlow Account ID'
+  token:
+    description: "Token used to authenticate with PrestaFlow API. Use a repository secret for this."
     required: true
-  prestaflow_secret_key:
-    description: 'PrestaFlow Secret Key'
+  project_id:
+    description: "Project id (numerical) to upload file to. You can get the numerical ID from the sidebar on a project page."
     required: true
+  file_path:
+    description: "The path to the file you want to upload"
+    required: true
+outputs:
+  id:
+    description: "The ID of the file created."
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
-  args:
-    - ${{ inputs.prestaflow_account_id }}
+  using: "node20"
+  main: "dist/index.js"
+branding:
+  icon: "arrow-up-circle"
+  color: "orange"

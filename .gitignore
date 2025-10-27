@@ -1,2 +1,3 @@
-vendor
-Makefile
+node_modules/
+.idea
+.github/.DS_Store
