@@ -24,7 +24,7 @@ async function run() {
         "https://api.prestaflow.io/ci/github-action" +
         // projectId +
         //"/upload-file",
-        "",
+        "/",
       //port: 443,
       headers: {
         "Content-Type": "multipart/form-data",
