@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     zip \
     curl
 
-COPY --from=composer:1.8.6 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.8.12 /usr/bin/composer /usr/bin/composer
 RUN composer global require hirak/prestissimo
 
 COPY composer.json /app/composer.json
