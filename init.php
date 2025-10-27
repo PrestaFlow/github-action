@@ -27,7 +27,7 @@ const PRESTAFLOW_API_URL = 'https://api.prestaflow.io';
 
         // Call
         try {
-            $response = $client->post('/api/github-action', [
+            $response = $client->post('/ci/github-action', [
                 'multipart' => [
                     [
                         'name'     => 'account_id',
