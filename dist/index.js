@@ -60062,19 +60062,31 @@ var __webpack_exports__ = {};
 const core = __nccwpck_require__(7484);
 const fs = __nccwpck_require__(9896);
 const req = __nccwpck_require__(1861);
+const util = __nccwpck_require__(9023);
+const exec = util.promisify((__nccwpck_require__(5317).exec));
 
 function isID(str) {
   return !(isNaN(str) || str.includes("."));
 }
 
+async function executeTests() {
+  console.log('Executing composer run prestaflow:json:file command:');
+  const { stdout, stderr } = await exec('composer run prestaflow:json:file');
+  console.log('stdout:', stdout);
+  console.log('stderr:', stderr);
+}
+
 async function run() {
   try {
-    const token = core.getInput("token", { required: true });
-    const projectId = core.getInput("project_id", { required: true });
+    await executeTests();
+    const token = core.getInput("token", { required: false });
+    console.log("Token: " + token);
+    const projectId = core.getInput("project_id", { required: false });
     if (!isID(projectId)) {
       core.setFailed("Invalid project ID! (Must be an integer)");
     }
-    const filePath = core.getInput("file_path", { required: true });
+    const filePath = core.getInput("file_path", { required: false });
+    console.log(fs.globSync('*'))
     if (!fs.existsSync(filePath)) {
       core.setFailed("Specified file at " + filePath + " does not exist!");
     }

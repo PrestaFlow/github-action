@@ -1,19 +1,31 @@
 const core = require("@actions/core");
 const fs = require("fs");
 const req = require("request");
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
 
 function isID(str) {
   return !(isNaN(str) || str.includes("."));
 }
 
+async function executeTests() {
+  console.log('Executing composer run prestaflow:json:file command:');
+  const { stdout, stderr } = await exec('composer run prestaflow:json:file');
+  console.log('stdout:', stdout);
+  console.log('stderr:', stderr);
+}
+
 async function run() {
   try {
-    const token = core.getInput("token", { required: true });
-    const projectId = core.getInput("project_id", { required: true });
+    await executeTests();
+    const token = core.getInput("token", { required: false });
+    console.log("Token: " + token);
+    const projectId = core.getInput("project_id", { required: false });
     if (!isID(projectId)) {
       core.setFailed("Invalid project ID! (Must be an integer)");
     }
-    const filePath = core.getInput("file_path", { required: true });
+    const filePath = core.getInput("file_path", { required: false });
+    console.log(fs.globSync('*'))
     if (!fs.existsSync(filePath)) {
       core.setFailed("Specified file at " + filePath + " does not exist!");
     }
