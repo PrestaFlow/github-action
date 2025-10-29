@@ -62600,6 +62600,9 @@ async function run() {
       options.formData.files.push(fs.createReadStream(file));
     }
 
+    console.log("Request options:");
+    console.table(options);
+
     req.post(options, (err, response, body) => {
       console.log("Response code:");
       console.log(response && response.statusCode);
