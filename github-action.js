@@ -50,8 +50,10 @@ async function run() {
     const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/**'];
     const globber = await glob.create(patterns.join('\n'))
     for await (const file of globber.globGenerator()) {
-      console.log(file);
-      options.formData.files.push(fs.createReadStream(file));
+      if (fs.isFile(file)) {
+        console.log(file);
+        options.formData.files.push(fs.createReadStream(file));
+      }
     }
 
     console.log("Request options:");
