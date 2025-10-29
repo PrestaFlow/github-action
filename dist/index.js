@@ -62573,7 +62573,8 @@ async function run() {
     }
     const filePath = core.getInput("file_path", { required: false });
 
-    const globber = await glob.create('**/prestaflow/**')
+    const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/**'];
+    const globber = await glob.create(patterns.join('\n'))
     for await (const file of globber.globGenerator()) {
       console.log(file)
     }
