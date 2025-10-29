@@ -62601,6 +62601,12 @@ async function run() {
     }
 
     req.post(options, (err, response, body) => {
+      console.log("Response code:");
+      console.log(response && response.statusCode);
+      console.log("Response body:");
+      console.log(body);
+      console.log("Response body in response:");
+      console.log(response.body);
       if (!err) {
         core.debug("Response code: " + response.statusCode);
         if (response.statusCode == 200) {
