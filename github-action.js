@@ -1,8 +1,10 @@
 const core = require("@actions/core");
+const exec = require('@actions/exec');
+const glob = require('@actions/glob');
+
 const fs = require("fs");
 const req = require("request");
 const util = require('util');
-const exec = util.promisify(require('child_process').exec);
 
 function isID(str) {
   return !(isNaN(str) || str.includes("."));
@@ -10,7 +12,7 @@ function isID(str) {
 
 async function executeTests() {
   console.log('Executing composer run prestaflow:json:file command:');
-  const { stdout, stderr } = await exec('composer run prestaflow:json:file');
+  const { stdout, stderr } = await exec.exec('composer run prestaflow:json:file');
   console.log('stdout:', stdout);
   console.log('stderr:', stderr);
 }
@@ -25,10 +27,15 @@ async function run() {
       core.setFailed("Invalid project ID! (Must be an integer)");
     }
     const filePath = core.getInput("file_path", { required: false });
-    console.log(fs.globSync('*'))
-    if (!fs.existsSync(filePath)) {
-      core.setFailed("Specified file at " + filePath + " does not exist!");
+
+    const globber = await glob.create('/prestaflow/**')
+    for await (const file of globber.globGenerator()) {
+      console.log(file)
     }
+    //console.log(fs.globSync('*'))
+    //if (!fs.existsSync(filePath)) {
+    //  core.setFailed("Specified file at " + filePath + " does not exist!");
+    //}
 
     const options = {
       method: "POST",

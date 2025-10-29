@@ -57954,6 +57954,14 @@ WError.prototype.cause = function we_cause(c)
 
 /***/ }),
 
+/***/ 7809:
+/***/ ((module) => {
+
+module.exports = eval("require")("@actions/glob");
+
+
+/***/ }),
+
 /***/ 2613:
 /***/ ((module) => {
 
@@ -60060,10 +60068,12 @@ module.exports = /*#__PURE__*/JSON.parse('{"application/1d-interleaved-parityfec
 /************************************************************************/
 var __webpack_exports__ = {};
 const core = __nccwpck_require__(7484);
+const exec = __nccwpck_require__(5236);
+const glob = __nccwpck_require__(7809);
+
 const fs = __nccwpck_require__(9896);
 const req = __nccwpck_require__(1861);
 const util = __nccwpck_require__(9023);
-const exec = util.promisify((__nccwpck_require__(5317).exec));
 
 function isID(str) {
   return !(isNaN(str) || str.includes("."));
@@ -60071,7 +60081,7 @@ function isID(str) {
 
 async function executeTests() {
   console.log('Executing composer run prestaflow:json:file command:');
-  const { stdout, stderr } = await exec('composer run prestaflow:json:file');
+  const { stdout, stderr } = await exec.exec('composer run prestaflow:json:file');
   console.log('stdout:', stdout);
   console.log('stderr:', stderr);
 }
@@ -60086,10 +60096,15 @@ async function run() {
       core.setFailed("Invalid project ID! (Must be an integer)");
     }
     const filePath = core.getInput("file_path", { required: false });
-    console.log(fs.globSync('*'))
-    if (!fs.existsSync(filePath)) {
-      core.setFailed("Specified file at " + filePath + " does not exist!");
+
+    const globber = await glob.create('/prestaflow/**')
+    for await (const file of globber.globGenerator()) {
+      console.log(file)
     }
+    //console.log(fs.globSync('*'))
+    //if (!fs.existsSync(filePath)) {
+    //  core.setFailed("Specified file at " + filePath + " does not exist!");
+    //}
 
     const options = {
       method: "POST",
