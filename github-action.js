@@ -21,15 +21,18 @@ async function run() {
   try {
     await executeTests();
     const token = core.getInput("token", { required: false });
-    console.log("Token: " + token);
     const projectId = core.getInput("project_id", { required: false });
     if (!isID(projectId)) {
       core.setFailed("Invalid project ID! (Must be an integer)");
     }
     const filePath = core.getInput("file_path", { required: false });
 
-    const globber = await glob.create('/prestaflow/**')
+    const globber = await glob.create('**/prestaflow/**')
     for await (const file of globber.globGenerator()) {
+      console.log(file)
+    }
+    const globber2 = await glob.create('**')
+    for await (const file of globber2.globGenerator()) {
       console.log(file)
     }
     //console.log(fs.globSync('*'))
