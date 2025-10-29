@@ -62550,17 +62550,14 @@ const glob = __nccwpck_require__(7206);
 
 const fs = __nccwpck_require__(9896);
 const req = __nccwpck_require__(1861);
-const util = __nccwpck_require__(9023);
+//const util = require('util');
 
 function isID(str) {
   return !(isNaN(str) || str.includes("."));
 }
 
 async function executeTests() {
-  console.log('Executing composer run prestaflow:json:file command:');
   const { stdout, stderr } = await exec.exec('composer run prestaflow:json:file');
-  console.log('stdout:', stdout);
-  console.log('stderr:', stderr);
 }
 
 async function run() {
@@ -62571,17 +62568,8 @@ async function run() {
     if (!isID(projectId)) {
       core.setFailed("Invalid project ID! (Must be an integer)");
     }
-    const filePath = core.getInput("file_path", { required: false });
+    //const filePath = core.getInput("file_path", { required: false });
 
-    const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/**'];
-    const globber = await glob.create(patterns.join('\n'))
-    for await (const file of globber.globGenerator()) {
-      console.log(file)
-    }
-    const globber2 = await glob.create('**')
-    for await (const file of globber2.globGenerator()) {
-      console.log(file)
-    }
     //console.log(fs.globSync('*'))
     //if (!fs.existsSync(filePath)) {
     //  core.setFailed("Specified file at " + filePath + " does not exist!");
@@ -62600,9 +62588,18 @@ async function run() {
         "X-Api-Token": token,
       },
       formData: {
-        file: fs.createReadStream(filePath),
+        //files: fs.createReadStream(filePath),
+        files: [],
       },
     };
+
+    const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/**'];
+    const globber = await glob.create(patterns.join('\n'))
+    for await (const file of globber.globGenerator()) {
+      console.log(file);
+      options.formData.files.push(fs.createReadStream(file));
+    }
+
     req.post(options, (err, response, body) => {
       if (!err) {
         core.debug("Response code: " + response.statusCode);
