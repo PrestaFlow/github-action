@@ -39225,6 +39225,7 @@ async function run() {
     const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/*.png'];
     const globber = await glob.create(patterns.join('\n'))
     for await (const file of globber.globGenerator()) {
+      core.debug(`Found file: ${file}`);
       let stats = fs.statSync(file);
       if (stats.isFile()) {
         const fileName = path.basename(file);
