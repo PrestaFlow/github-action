@@ -1,17 +1,19 @@
 const core = require("@actions/core");
 const exec = require('@actions/exec');
 const glob = require('@actions/glob');
-
 const fs = require("fs");
-const req = require("request");
-//const util = require('util');
+const path = require("path");
+const FormData = require('form-data');
+const axios = require('axios');
 
 function isID(str) {
   return !(isNaN(str) || str.includes("."));
 }
 
 async function executeTests() {
-  const { stdout, stderr } = await exec.exec('composer run prestaflow:json:file');
+  if (fs.existsSync('composer.json')) {
+    await exec.exec('composer run prestaflow:json:file');
+  }
 }
 
 async function run() {
@@ -22,63 +24,45 @@ async function run() {
     if (!isID(projectId)) {
       core.setFailed("Invalid project ID! (Must be an integer)");
     }
-    //const filePath = core.getInput("file_path", { required: false });
 
-    //console.log(fs.globSync('*'))
-    //if (!fs.existsSync(filePath)) {
-    //  core.setFailed("Specified file at " + filePath + " does not exist!");
-    //}
+    const form = new FormData();
 
-    const options = {
-      method: "POST",
-      url:
-        "https://api.prestaflow.io/ci/github-action" +
-        // projectId +
-        //"/upload-file",
-        "/",
-      //port: 443,
-      headers: {
-        "Content-Type": "multipart/form-data",
-        "X-Api-Token": token,
-      },
-      formData: {
-        //files: fs.createReadStream(filePath),
-        files: {},
-      },
-    };
-    const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/**'];
+    const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/*.png'];
     const globber = await glob.create(patterns.join('\n'))
     for await (const file of globber.globGenerator()) {
       let stats = fs.statSync(file);
       if (stats.isFile()) {
-        console.log(file);
-        options.formData.files.push(fs.createReadStream(file));
+        const fileName = path.basename(file);
+
+        if (file.includes('screens')) {
+          let fileNameT = 'screens/' + fileName;
+          form.append('file[]', fs.createReadStream(file), fileNameT);
+        } else {
+          form.append('file[]', fs.createReadStream(file), fileName);
+        }
       }
     }
 
-    console.log("Request options:");
-    console.table(options);
+    axios.defaults.baseURL = 'https://api.prestaflow.io';
 
-    req.post(options, (err, response, body) => {
-      console.log("Error:");
-      console.log(err);
-      console.log("Response code:");
-      console.log(response && response.statusCode);
-      console.log("Response body in response:");
-      console.log(response.body);
-      if (!err) {
-        core.debug("Response code: " + response.statusCode);
-        if (response.statusCode == 200) {
-          core.debug(`Response body:\n${response.body}`);
-          core.setOutput("id", JSON.parse(body).id.toString());
-        } else {
-          core.setFailed(
-            `${response.statusCode}: ${response.statusMessage}\nResponse body:\n${response.body}\nRequest body:${body}`
-          );
-        }
+    const endpoint = `/ci/github-action/`;
+
+    await axios.post(endpoint, form, {
+      headers: {
+        ...form.getHeaders(),
+        //Authorization: 'Bearer ...', // optional
+        "X-Api-Token": token,
+      },
+    }).then(function (response) {
+      core.setOutput("id", response.data.id);
+    }).catch(function (error) {
+      if (error.response) {
+        core.setFailed(
+          `${error.response.statusText}`
+        );
       } else {
         core.setFailed(
-          `Request error:${err}\nResponse body:\n${response.body}\nRequest body:${body}`
+          `${error.message}`
         );
       }
     });
