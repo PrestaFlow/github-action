@@ -11,7 +11,7 @@ inputs:
   execute:
     description: "Execute the Composer action"
     required: false
-    default: '1'
+    default: 'true'
 outputs:
   id:
     description: "Output ID"
