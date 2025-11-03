@@ -27,7 +27,7 @@ async function run() {
 
     const form = new FormData();
 
-    const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/*.png'];
+    const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/errors/*.png'];
     const globber = await glob.create(patterns.join('\n'))
     for await (const file of globber.globGenerator()) {
       core.debug(`Found file: ${file}`);
