@@ -1,22 +1,23 @@
 name: "Upload to PrestaFlow"
 description: "Uploads files to PrestaFlow via PrestaFlow API"
-author: "itsmeow"
+author: "PrestaFlow"
 inputs:
   token:
     description: "Token used to authenticate with PrestaFlow API. Use a repository secret for this."
     required: true
-  project_id:
+  projectId:
     description: "Project id (numerical) to upload file to. You can get the numerical ID from the sidebar on a project page."
-    required: true
-  file_path:
-    description: "The path to the file you want to upload"
-    required: true
+    required: false
+  execute:
+    description: "Execute the Composer action"
+    required: false
+    default: '1'
 outputs:
   id:
-    description: "The ID of the file created."
+    description: "Output ID"
 runs:
   using: "node20"
   main: "dist/index.js"
 branding:
-  icon: "arrow-up-circle"
-  color: "orange"
+  icon: 'layers'
+  color: 'blue'

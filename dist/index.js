@@ -38725,6 +38725,11 @@ function isID(str) {
 }
 
 async function executeTests() {
+  const execute = core.getBooleanInput("execute", { required: false });
+  if (!execute) {
+    core.info("Skipping execution as per input parameter.");
+    return;
+  }
   if (fs.existsSync('composer.json')) {
     await exec.exec('composer run prestaflow:json:file');
   }
