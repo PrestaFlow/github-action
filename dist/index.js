@@ -38734,12 +38734,10 @@ async function run() {
   try {
     await executeTests();
     const token = core.getInput("token", { required: false });
-    const projectId = core.getInput("project_id", { required: false });
-    if (!isID(projectId)) {
-      core.setFailed("Invalid project ID! (Must be an integer)");
-    }
+    const projectId = core.getInput("projectId", { required: false });
 
     const form = new github_action_FormData();
+    form.append('projectId', projectId);
 
     const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/errors/*.png'];
     const globber = await glob.create(patterns.join('\n'))
@@ -38769,6 +38767,7 @@ async function run() {
         "X-Api-Token": token,
       },
     }).then(function (response) {
+      core.info("Output ID: " + response.data.id);
       core.setOutput("id", response.data.id);
     }).catch(function (error) {
       if (error.response) {
