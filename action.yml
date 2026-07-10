@@ -1,23 +1,65 @@
-name: "Upload to PrestaFlow"
-description: "Uploads files to PrestaFlow via PrestaFlow API"
+name: "PrestaFlow"
+description: "Run PrestaFlow tests in CI: optional PrestaShop setup via Flashlight, upload results, comment PRs."
 author: "PrestaFlow"
+
 inputs:
   token:
-    description: "Token used to authenticate with PrestaFlow API. Use a repository secret for this."
+    description: "PrestaFlow API token (repository secret)."
     required: true
   projectId:
-    description: "Project id (numerical) to upload file to. You can get the numerical ID from the sidebar on a project page."
+    description: "Numerical PrestaFlow project ID."
     required: false
   execute:
-    description: "Execute the Composer action"
+    description: "Run composer run prestaflow:json:file before upload."
     required: false
     default: 'true'
+  suites:
+    description: "Comma-separated list of suites to run (e.g. BackOffice,FrontOffice). Empty runs all suites."
+    required: false
+    default: ''
+  flashlight:
+    description: "Start a PrestaShop Flashlight Docker instance for the tests to target."
+    required: false
+    default: 'false'
+  ps-version:
+    description: "Flashlight image tag (e.g. 9.0.0, 8.1.7, latest). Ignored when flashlight is false."
+    required: false
+    default: 'latest'
+  pr-comment:
+    description: "Post/update a summary comment on the pull request. Defaults to true on pull_request events, false otherwise."
+    required: false
+    default: ''
+  github-token:
+    description: "Token used to post the PR comment."
+    required: false
+    default: ${{ github.token }}
+  upload-artifacts:
+    description: "Upload results.json + error screenshots as a GitHub artifact."
+    required: false
+    default: 'true'
+
 outputs:
   id:
-    description: "Output ID"
+    description: "PrestaFlow report ID."
+  report-url:
+    description: "URL of the report on prestaflow.io."
+  passed:
+    description: "Number of passing tests."
+  failed:
+    description: "Number of failing tests."
+  skipped:
+    description: "Number of skipped tests."
+  total:
+    description: "Total number of tests."
+  duration-ms:
+    description: "Total execution duration in milliseconds."
+  status:
+    description: "'success' if failed==0, else 'failure'."
+
 runs:
   using: "node20"
   main: "dist/index.js"
+
 branding:
   icon: 'layers'
   color: 'blue'

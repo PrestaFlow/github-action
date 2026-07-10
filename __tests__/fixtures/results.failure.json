@@ -1,0 +1,16 @@
+{
+  "suites": [
+    {
+      "suite": "BackOfficeSuite",
+      "title": "Back office",
+      "stats": { "passes": 42, "failures": 3, "skips": 0, "skippeds": 2, "todos": 0, "assertions": 200, "time": 134000 },
+      "tests": [
+        { "title": "Can create a simple product", "state": "fail", "expect": { "fail": ["Timeout waiting for selector `#submit_form` (30000ms)"] }, "file": "/repo/tests/BackOffice/Products/CreateProductTest.php", "line": 42, "time": 30000 },
+        { "title": "Can filter by status", "state": "fail", "expect": { "fail": ["Expected element to be visible: `.order-status-filter`"] }, "file": "/repo/tests/BackOffice/Orders/FilterTest.php", "line": 28, "time": 1500 },
+        { "title": "Add to cart", "state": "fail", "expect": { "fail": ["HTTP 500 on POST /cart"] }, "file": "/repo/tests/FrontOffice/Cart/AddTest.php", "line": 15, "time": 800 }
+      ],
+      "warnings": [],
+      "screens": []
+    }
+  ]
+}
