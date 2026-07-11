@@ -53,7 +53,7 @@ export async function run(): Promise<void> {
         containerPath: mount.containerPath,
       });
       flashlight = await startFlashlight({ composeYaml, port });
-      env.PRESTAFLOW_PS_URL = flashlight.url;
+      env.PRESTAFLOW_FO_URL = `${flashlight.url}/`;
       core.info(`Flashlight ready at ${flashlight.url}`);
     }
 
