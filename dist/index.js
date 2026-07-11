@@ -119966,6 +119966,9 @@ function renderCompose(p) {
     return `services:
   prestashop:
     image: prestashop/prestashop-flashlight:${p.psVersion}
+    depends_on:
+      mysql:
+        condition: service_healthy
     ports:
       - "${p.port}:80"
     volumes:
@@ -119974,6 +119977,19 @@ function renderCompose(p) {
       PS_DOMAIN: localhost:${p.port}
       DEBUG_MODE: 0
       INIT_ON_RESTART: 0
+
+  mysql:
+    image: mariadb:lts
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    environment:
+      MYSQL_USER: prestashop
+      MYSQL_PASSWORD: prestashop
+      MYSQL_ROOT_PASSWORD: prestashop
+      MYSQL_DATABASE: prestashop
 `;
 }
 
@@ -120074,7 +120090,9 @@ async function startFlashlight(p) {
     fs.writeFileSync(composePath, p.composeYaml);
     await exec.exec('docker', ['compose', '-f', composePath, 'up', '-d']);
     const url = `http://localhost:${p.port}`;
-    await waitFor(url, 120_000);
+    // 4 min: MySQL healthcheck + PS first-boot install can legitimately take
+    // 90-150s on cold GitHub Actions runners.
+    await waitFor(url, 240_000);
     const tearDown = async ({ onFailure }) => {
         if (onFailure) {
             core.startGroup('Flashlight logs');

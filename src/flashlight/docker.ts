@@ -63,7 +63,9 @@ export async function startFlashlight(p: StartParams): Promise<FlashlightHandle>
   await exec.exec('docker', ['compose', '-f', composePath, 'up', '-d']);
 
   const url = `http://localhost:${p.port}`;
-  await waitFor(url, 120_000);
+  // 4 min: MySQL healthcheck + PS first-boot install can legitimately take
+  // 90-150s on cold GitHub Actions runners.
+  await waitFor(url, 240_000);
 
   const tearDown = async ({ onFailure }: { onFailure: boolean }): Promise<void> => {
     if (onFailure) {
