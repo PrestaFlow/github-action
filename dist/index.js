@@ -120294,7 +120294,7 @@ async function run() {
                 containerPath: mount.containerPath,
             });
             flashlight = await (0, docker_1.startFlashlight)({ composeYaml, port });
-            env.PRESTAFLOW_PS_URL = flashlight.url;
+            env.PRESTAFLOW_FO_URL = `${flashlight.url}/`;
             core.info(`Flashlight ready at ${flashlight.url}`);
         }
         try {
