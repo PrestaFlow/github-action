@@ -45,7 +45,8 @@ function successBody(p: BuildBodyParams): string {
     ``,
   ];
   if (meta) { lines.push(meta, ``); }
-  lines.push(`📊 [View full report](${p.reportUrl})`, ``, footer(p.sha));
+  if (p.reportUrl) { lines.push(`📊 [View full report](${p.reportUrl})`, ``); }
+  lines.push(footer(p.sha));
   return lines.join('\n');
 }
 
@@ -75,10 +76,9 @@ function failureBody(p: BuildBodyParams): string {
     ``,
     `</details>`,
     ``,
-    `📊 [View full report](${p.reportUrl})`,
-    ``,
-    footer(p.sha),
   );
+  if (p.reportUrl) { lines.push(`📊 [View full report](${p.reportUrl})`, ``); }
+  lines.push(footer(p.sha));
   return lines.join('\n');
 }
 

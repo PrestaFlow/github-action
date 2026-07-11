@@ -120541,7 +120541,10 @@ function successBody(p) {
     if (meta) {
         lines.push(meta, ``);
     }
-    lines.push(`📊 [View full report](${p.reportUrl})`, ``, footer(p.sha));
+    if (p.reportUrl) {
+        lines.push(`📊 [View full report](${p.reportUrl})`, ``);
+    }
+    lines.push(footer(p.sha));
     return lines.join('\n');
 }
 function failureBody(p) {
@@ -120564,7 +120567,11 @@ function failureBody(p) {
     if (meta) {
         lines.push(meta, ``);
     }
-    lines.push(`<details>`, `<summary>Failure details (${p.report.failed})</summary>`, ``, details, ``, `</details>`, ``, `📊 [View full report](${p.reportUrl})`, ``, footer(p.sha));
+    lines.push(`<details>`, `<summary>Failure details (${p.report.failed})</summary>`, ``, details, ``, `</details>`, ``);
+    if (p.reportUrl) {
+        lines.push(`📊 [View full report](${p.reportUrl})`, ``);
+    }
+    lines.push(footer(p.sha));
     return lines.join('\n');
 }
 function buildCommentBody(p) {
