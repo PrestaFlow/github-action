@@ -8,6 +8,18 @@ describe('buildCommentBody', () => {
     expect(body.startsWith(MARKER)).toBe(true);
   });
 
+  it('omits the "View full report" link when reportUrl is empty', () => {
+    const success = buildCommentBody({ report: baseReport, reportUrl: '', suites: [], psVersion: null, sha: 'abc' });
+    expect(success).not.toMatch(/View full report/);
+    expect(success).not.toMatch(/\[View full report\]\(\)/);
+
+    const failure = buildCommentBody({
+      report: { ...baseReport, passed: 0, failed: 1, total: 1, failures: [{ suite: 'S', title: 'T', message: 'm', file: 'f', line: 1 }] },
+      reportUrl: '', suites: [], psVersion: null, sha: 'abc',
+    });
+    expect(failure).not.toMatch(/View full report/);
+  });
+
   it('short form on success', () => {
     const body = buildCommentBody({ report: baseReport, reportUrl: 'https://x', suites: ['BackOffice'], psVersion: '9.0.0', sha: 'abc123def' });
     expect(body).toMatch(/10 tests passed/);
