@@ -60,8 +60,15 @@ export async function run(): Promise<void> {
     try {
       await runComposer({ execute: inputs.execute, env });
     } catch (e) {
+      // Composer exits non-zero when tests fail — that's the normal reporting
+      // channel. Do NOT rethrow, or we skip the parse/upload/PR-comment path
+      // and lose all observability. The final setFailed() at the end still
+      // reflects report.failed > 0. If composer literally could not run
+      // (missing binary, missing composer.json handled upstream), the caller
+      // will see the message in the log.
       stepFailed = true;
-      throw e;
+      const msg = e instanceof Error ? e.message : String(e);
+      core.warning(`composer exited non-zero — will parse results.json anyway. Reason: ${msg}`);
     }
 
     let report: TestReport = {
