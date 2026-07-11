@@ -120313,7 +120313,8 @@ async function run() {
             });
             flashlight = await (0, docker_1.startFlashlight)({ composeYaml, port });
             env.PRESTAFLOW_FO_URL = `${flashlight.url}/`;
-            core.info(`Flashlight ready at ${flashlight.url}`);
+            env.PRESTAFLOW_PS_VERSION = inputs.psVersion;
+            core.info(`Flashlight ready at ${flashlight.url} (PS ${inputs.psVersion})`);
         }
         try {
             await (0, composer_1.runComposer)({ execute: inputs.execute, env });
