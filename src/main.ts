@@ -27,6 +27,18 @@ function findResultsJson(): string | null {
   return null;
 }
 
+function writeDotEnvLocal(workspace: string, vars: Record<string, string>): void {
+  // The PHP library reads env vars through phpdotenv (Dotenv::createImmutable),
+  // which only picks up .env / .env.local files — NOT process env, unless PHP
+  // is built with variables_order including 'E' (rarely the case in CI).
+  // Writing .env.local (loaded before .env, values are immutable so they win)
+  // guarantees the lib sees our values regardless of PHP config.
+  const path = `${workspace}/.env.local`;
+  const body = Object.entries(vars).map(([k, v]) => `${k}=${v}`).join('\n') + '\n';
+  fs.writeFileSync(path, body);
+  core.info(`Wrote ${Object.keys(vars).length} vars to ${path}`);
+}
+
 export async function run(): Promise<void> {
   let flashlight: FlashlightHandle | null = null;
   let stepFailed = false;
@@ -55,6 +67,10 @@ export async function run(): Promise<void> {
       flashlight = await startFlashlight({ composeYaml, port });
       env.PRESTAFLOW_FO_URL = `${flashlight.url}/`;
       env.PRESTAFLOW_PS_VERSION = inputs.psVersion;
+      writeDotEnvLocal(workspace, {
+        PRESTAFLOW_FO_URL: `${flashlight.url}/`,
+        PRESTAFLOW_PS_VERSION: inputs.psVersion,
+      });
       core.info(`Flashlight ready at ${flashlight.url} (PS ${inputs.psVersion})`);
     }
 
@@ -82,7 +98,17 @@ export async function run(): Promise<void> {
       core.warning('No results.json found — outputs will be zeros.');
     }
 
-    const uploaded = await uploadToApi({ token: inputs.token, projectId: inputs.projectId });
+    let uploaded = { id: '', url: '' };
+    if (resultsPath) {
+      try {
+        uploaded = await uploadToApi({ token: inputs.token, projectId: inputs.projectId });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        core.warning(`API upload failed: ${msg}`);
+      }
+    } else {
+      core.info('Skipping API upload (no results.json to send).');
+    }
 
     if (inputs.uploadArtifacts) {
       await uploadArtifacts();
