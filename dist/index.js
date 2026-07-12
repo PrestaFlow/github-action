@@ -120288,6 +120288,17 @@ function findResultsJson() {
             return c;
     return null;
 }
+function writeDotEnvLocal(workspace, vars) {
+    // The PHP library reads env vars through phpdotenv (Dotenv::createImmutable),
+    // which only picks up .env / .env.local files — NOT process env, unless PHP
+    // is built with variables_order including 'E' (rarely the case in CI).
+    // Writing .env.local (loaded before .env, values are immutable so they win)
+    // guarantees the lib sees our values regardless of PHP config.
+    const path = `${workspace}/.env.local`;
+    const body = Object.entries(vars).map(([k, v]) => `${k}=${v}`).join('\n') + '\n';
+    fs.writeFileSync(path, body);
+    core.info(`Wrote ${Object.keys(vars).length} vars to ${path}`);
+}
 async function run() {
     let flashlight = null;
     let stepFailed = false;
@@ -120314,6 +120325,10 @@ async function run() {
             flashlight = await (0, docker_1.startFlashlight)({ composeYaml, port });
             env.PRESTAFLOW_FO_URL = `${flashlight.url}/`;
             env.PRESTAFLOW_PS_VERSION = inputs.psVersion;
+            writeDotEnvLocal(workspace, {
+                PRESTAFLOW_FO_URL: `${flashlight.url}/`,
+                PRESTAFLOW_PS_VERSION: inputs.psVersion,
+            });
             core.info(`Flashlight ready at ${flashlight.url} (PS ${inputs.psVersion})`);
         }
         try {
@@ -120340,7 +120355,19 @@ async function run() {
         else {
             core.warning('No results.json found — outputs will be zeros.');
         }
-        const uploaded = await (0, api_1.uploadToApi)({ token: inputs.token, projectId: inputs.projectId });
+        let uploaded = { id: '', url: '' };
+        if (resultsPath) {
+            try {
+                uploaded = await (0, api_1.uploadToApi)({ token: inputs.token, projectId: inputs.projectId });
+            }
+            catch (e) {
+                const msg = e instanceof Error ? e.message : String(e);
+                core.warning(`API upload failed: ${msg}`);
+            }
+        }
+        else {
+            core.info('Skipping API upload (no results.json to send).');
+        }
         if (inputs.uploadArtifacts) {
             await (0, artifacts_1.uploadArtifacts)();
         }
