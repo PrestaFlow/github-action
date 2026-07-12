@@ -54,8 +54,24 @@ export async function run(): Promise<void> {
       const mount = resolveMount({
         composerJson: cj as { name?: string; type?: string } | null,
         workspaceBasename: path.basename(workspace),
+        mode: inputs.flashlightMount,
       });
       if (mount.warning) core.warning(mount.warning);
+      core.info(`Mounting workspace at ${mount.containerPath} (mode: ${inputs.flashlightMount})`);
+
+      let initScriptsHostPath: string | undefined;
+      if (inputs.flashlightInitScripts) {
+        const resolved = path.isAbsolute(inputs.flashlightInitScripts)
+          ? inputs.flashlightInitScripts
+          : path.join(workspace, inputs.flashlightInitScripts);
+        if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+          throw new Error(
+            `flashlight-init-scripts: path does not exist or is not a directory: ${resolved}`,
+          );
+        }
+        initScriptsHostPath = resolved;
+        core.info(`Mounting init-scripts from ${resolved} → /tmp/init-scripts (read-only)`);
+      }
 
       const port = await pickPort([8000, 8001, 8002]);
       const composeYaml = renderCompose({
@@ -63,6 +79,7 @@ export async function run(): Promise<void> {
         port,
         workspace,
         containerPath: mount.containerPath,
+        initScriptsHostPath,
       });
       flashlight = await startFlashlight({ composeYaml, port });
       env.PRESTAFLOW_FO_URL = `${flashlight.url}/`;
