@@ -38,4 +38,21 @@ describe('renderCompose', () => {
     expect(yml).toContain('MYSQL_DATABASE: prestashop');
     expect(yml).toMatch(/depends_on:\s*\n\s+mysql:\s*\n\s+condition: service_healthy/);
   });
+
+  it('does not mount init-scripts by default', () => {
+    const yml = renderCompose({
+      psVersion: '9.0.0', port: 8000,
+      workspace: '/w', containerPath: '/var/www/html',
+    });
+    expect(yml).not.toContain('/tmp/init-scripts');
+  });
+
+  it('mounts init-scripts read-only when initScriptsHostPath is provided', () => {
+    const yml = renderCompose({
+      psVersion: '9.0.0', port: 8000,
+      workspace: '/w', containerPath: '/var/www/html',
+      initScriptsHostPath: '/w/flashlight/init-scripts',
+    });
+    expect(yml).toContain('/w/flashlight/init-scripts:/tmp/init-scripts:ro');
+  });
 });

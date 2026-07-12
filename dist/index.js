@@ -119963,6 +119963,9 @@ ZipStream.prototype.finalize = function() {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.renderCompose = renderCompose;
 function renderCompose(p) {
+    const extraVolume = p.initScriptsHostPath
+        ? `      - ${p.initScriptsHostPath}:/tmp/init-scripts:ro\n`
+        : '';
     return `services:
   prestashop:
     image: prestashop/prestashop-flashlight:${p.psVersion}
@@ -119973,7 +119976,7 @@ function renderCompose(p) {
       - "${p.port}:80"
     volumes:
       - ${p.workspace}:${p.containerPath}
-    environment:
+${extraVolume}    environment:
       PS_DOMAIN: localhost:${p.port}
       DEBUG_MODE: 0
       INIT_ON_RESTART: 0
@@ -120126,15 +120129,25 @@ function nameFrom(cj, fallback) {
     return fallback;
 }
 function resolveMount(p) {
-    const type = p.composerJson?.type;
+    if (p.mode === 'root') {
+        return { containerPath: '/var/www/html' };
+    }
     const name = nameFrom(p.composerJson, p.workspaceBasename);
+    if (p.mode === 'modules') {
+        return { containerPath: `/var/www/html/modules/${name}` };
+    }
+    if (p.mode === 'themes') {
+        return { containerPath: `/var/www/html/themes/${name}` };
+    }
+    // mode === 'auto' — detect from composer.json type
+    const type = p.composerJson?.type;
     if (type === 'prestashop-module')
         return { containerPath: `/var/www/html/modules/${name}` };
     if (type === 'prestashop-theme')
         return { containerPath: `/var/www/html/themes/${name}` };
     return {
         containerPath: `/var/www/html/modules/${p.workspaceBasename}`,
-        warning: `composer.json missing or type unknown — defaulting to /var/www/html/modules/${p.workspaceBasename}`,
+        warning: `composer.json missing or type unknown — defaulting to /var/www/html/modules/${p.workspaceBasename}. Set flashlight-mount to override.`,
     };
 }
 
@@ -120194,6 +120207,16 @@ function getCsv(name) {
         return [];
     return raw.split(',').map(s => s.trim()).filter(Boolean);
 }
+const VALID_MOUNT_MODES = ['auto', 'root', 'modules', 'themes'];
+function getMountMode() {
+    const raw = core.getInput('flashlight-mount').trim().toLowerCase();
+    if (!raw)
+        return 'auto';
+    if (!VALID_MOUNT_MODES.includes(raw)) {
+        throw new Error(`Input \`flashlight-mount\` must be one of ${VALID_MOUNT_MODES.join(', ')} (got: ${raw})`);
+    }
+    return raw;
+}
 function parseInputs() {
     const token = core.getInput('token');
     if (!token)
@@ -120207,6 +120230,8 @@ function parseInputs() {
         suites: getCsv('suites'),
         flashlight: getBool('flashlight', false),
         psVersion: core.getInput('ps-version') || 'latest',
+        flashlightMount: getMountMode(),
+        flashlightInitScripts: core.getInput('flashlight-init-scripts').trim(),
         prComment: getBool('pr-comment', prCommentDefault),
         githubToken: core.getInput('github-token'),
         uploadArtifacts: getBool('upload-artifacts', true),
@@ -120312,15 +120337,29 @@ async function run() {
             const mount = (0, mount_1.resolveMount)({
                 composerJson: cj,
                 workspaceBasename: path.basename(workspace),
+                mode: inputs.flashlightMount,
             });
             if (mount.warning)
                 core.warning(mount.warning);
+            core.info(`Mounting workspace at ${mount.containerPath} (mode: ${inputs.flashlightMount})`);
+            let initScriptsHostPath;
+            if (inputs.flashlightInitScripts) {
+                const resolved = path.isAbsolute(inputs.flashlightInitScripts)
+                    ? inputs.flashlightInitScripts
+                    : path.join(workspace, inputs.flashlightInitScripts);
+                if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+                    throw new Error(`flashlight-init-scripts: path does not exist or is not a directory: ${resolved}`);
+                }
+                initScriptsHostPath = resolved;
+                core.info(`Mounting init-scripts from ${resolved} → /tmp/init-scripts (read-only)`);
+            }
             const port = await (0, docker_1.pickPort)([8000, 8001, 8002]);
             const composeYaml = (0, compose_template_1.renderCompose)({
                 psVersion: inputs.psVersion,
                 port,
                 workspace,
                 containerPath: mount.containerPath,
+                initScriptsHostPath,
             });
             flashlight = await (0, docker_1.startFlashlight)({ composeYaml, port });
             env.PRESTAFLOW_FO_URL = `${flashlight.url}/`;

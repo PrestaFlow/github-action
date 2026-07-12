@@ -25,6 +25,14 @@ inputs:
     description: "Flashlight image tag (e.g. 9.0.0, 8.1.7, latest). Ignored when flashlight is false."
     required: false
     default: 'latest'
+  flashlight-mount:
+    description: "Where to mount the workspace inside the Flashlight container. 'auto' (default) picks modules/themes based on composer.json type, or falls back to modules/<repo>. 'root' mounts the workspace at /var/www/html (custom PrestaShop). 'modules' and 'themes' force those locations."
+    required: false
+    default: 'auto'
+  flashlight-init-scripts:
+    description: "Optional path (absolute or relative to the workspace) to a directory of Flashlight init scripts. Mounted read-only at /tmp/init-scripts. Scripts must be executable and start with a shebang; they run alphabetically at container boot."
+    required: false
+    default: ''
   pr-comment:
     description: "Post/update a summary comment on the pull request. Defaults to true on pull_request events, false otherwise."
     required: false

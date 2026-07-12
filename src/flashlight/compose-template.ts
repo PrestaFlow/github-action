@@ -3,9 +3,14 @@ export interface RenderParams {
   port: number;
   workspace: string;
   containerPath: string;
+  initScriptsHostPath?: string;
 }
 
 export function renderCompose(p: RenderParams): string {
+  const extraVolume = p.initScriptsHostPath
+    ? `      - ${p.initScriptsHostPath}:/tmp/init-scripts:ro\n`
+    : '';
+
   return `services:
   prestashop:
     image: prestashop/prestashop-flashlight:${p.psVersion}
@@ -16,7 +21,7 @@ export function renderCompose(p: RenderParams): string {
       - "${p.port}:80"
     volumes:
       - ${p.workspace}:${p.containerPath}
-    environment:
+${extraVolume}    environment:
       PS_DOMAIN: localhost:${p.port}
       DEBUG_MODE: 0
       INIT_ON_RESTART: 0

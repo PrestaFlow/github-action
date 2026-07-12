@@ -3,7 +3,10 @@ import { parseInputs } from '../src/inputs';
 function withInputs(map: Record<string, string>, eventName = 'push', fn: () => void) {
   const originals: Record<string, string | undefined> = {};
   for (const [k, v] of Object.entries(map)) {
-    const key = `INPUT_${k.toUpperCase().replace(/-/g, '_')}`;
+    // Mirror @actions/core.getInput: uppercase the name, replace spaces with '_',
+    // but keep dashes verbatim — the runner sets env vars with dashes and
+    // Node's process.env reads them fine.
+    const key = `INPUT_${k.replace(/ /g, '_').toUpperCase()}`;
     originals[key] = process.env[key];
     process.env[key] = v;
   }
@@ -28,8 +31,31 @@ describe('parseInputs', () => {
       expect(i.suites).toEqual([]);
       expect(i.flashlight).toBe(false);
       expect(i.psVersion).toBe('latest');
+      expect(i.flashlightMount).toBe('auto');
+      expect(i.flashlightInitScripts).toBe('');
       expect(i.prComment).toBe(false);
       expect(i.uploadArtifacts).toBe(true);
+    });
+  });
+
+  it('parses flashlight-mount input', () => {
+    withInputs({ token: 't', 'flashlight-mount': 'root' }, 'push', () => {
+      expect(parseInputs().flashlightMount).toBe('root');
+    });
+    withInputs({ token: 't', 'flashlight-mount': 'THEMES' }, 'push', () => {
+      expect(parseInputs().flashlightMount).toBe('themes');
+    });
+  });
+
+  it('throws on invalid flashlight-mount', () => {
+    withInputs({ token: 't', 'flashlight-mount': 'nope' }, 'push', () => {
+      expect(() => parseInputs()).toThrow(/flashlight-mount/);
+    });
+  });
+
+  it('parses flashlight-init-scripts input', () => {
+    withInputs({ token: 't', 'flashlight-init-scripts': 'flashlight/init' }, 'push', () => {
+      expect(parseInputs().flashlightInitScripts).toBe('flashlight/init');
     });
   });
 
