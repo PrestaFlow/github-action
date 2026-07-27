@@ -20,6 +20,15 @@ export async function uploadToApi(p: UploadParams): Promise<UploadResult> {
   const form = new FormData();
   form.append('projectId', p.projectId);
 
+  const branch = process.env.GITHUB_REF_NAME;
+  if (branch) form.append('branch', branch);
+  const commitSha = process.env.GITHUB_SHA;
+  if (commitSha) form.append('commit_sha', commitSha);
+  const ref = process.env.GITHUB_REF;
+  if (ref) form.append('ref', ref);
+  const ciRunId = process.env.GITHUB_RUN_ID;
+  if (ciRunId) form.append('ci_run_id', ciRunId);
+
   const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/errors/*.png'];
   const globber = await glob.create(patterns.join('\n'));
 
