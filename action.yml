@@ -7,7 +7,7 @@ inputs:
     description: "PrestaFlow API token (repository secret)."
     required: true
   projectId:
-    description: "Numerical PrestaFlow project ID."
+    description: "PrestaFlow project Product Key (e.g. pk_01ABC...). Must match the project the token was issued for."
     required: false
   execute:
     description: "Run composer run prestaflow:json:file before upload."
