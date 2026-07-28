@@ -120845,7 +120845,7 @@ const fs = __importStar(__nccwpck_require__(79896));
 const path = __importStar(__nccwpck_require__(16928));
 const glob = __importStar(__nccwpck_require__(47206));
 const form_data_1 = __importDefault(__nccwpck_require__(96454));
-const ENDPOINT = 'https://api.prestaflow.io/ci/github-action/';
+const ENDPOINT = 'https://api.prestaflow.io/ci/github-action';
 async function uploadToApi(p) {
     const form = new form_data_1.default();
     form.append('projectId', p.projectId);

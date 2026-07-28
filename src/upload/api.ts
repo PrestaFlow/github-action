@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as glob from '@actions/glob';
 import FormData from 'form-data';
 
-const ENDPOINT = 'https://api.prestaflow.io/ci/github-action/';
+const ENDPOINT = 'https://api.prestaflow.io/ci/github-action';
 
 export interface UploadParams {
   token: string;
