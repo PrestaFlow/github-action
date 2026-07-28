@@ -29,14 +29,29 @@ export async function uploadToApi(p: UploadParams): Promise<UploadResult> {
   const ciRunId = process.env.GITHUB_RUN_ID;
   if (ciRunId) form.append('ci_run_id', ciRunId);
 
-  const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/errors/*.png'];
+  const patterns = [
+    '**/prestaflow/results.json',
+    '**/prestaflow/screens/errors/*.png',
+    '**/prestaflow/screens/actual/*.png',
+    '**/prestaflow/screens/diff/*.png',
+  ];
   const globber = await glob.create(patterns.join('\n'));
 
   for await (const file of globber.globGenerator()) {
     const stats = fs.statSync(file);
     if (!stats.isFile()) continue;
     const base = path.basename(file);
-    const name = file.includes('screens') ? `screens/${base}` : base;
+    const normalized = file.split(path.sep).join('/');
+    let name: string;
+    if (normalized.includes('screens/errors/')) {
+      name = `screens/${base}`;
+    } else if (normalized.includes('screens/actual/')) {
+      name = `visual/actual/${base}`;
+    } else if (normalized.includes('screens/diff/')) {
+      name = `visual/diff/${base}`;
+    } else {
+      name = base;
+    }
     form.append('file[]', fs.createReadStream(file), name);
   }
 

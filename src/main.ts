@@ -7,12 +7,15 @@ import { renderCompose } from './flashlight/compose-template';
 import { assertDockerAvailable, startFlashlight, pickPort, FlashlightHandle } from './flashlight/docker';
 import { suitesEnv } from './runner/suites';
 import { runComposer } from './runner/composer';
+import { prepareVisualBaselines } from './visual/prepare';
 import { uploadToApi } from './upload/api';
 import { uploadArtifacts } from './upload/artifacts';
 import { parseResults, TestReport } from './reporter/parse-results';
 import { setOutputs } from './reporter/outputs';
 import { buildCommentBody } from './reporter/pr-comment-body';
 import { postOrUpdatePrComment } from './reporter/pr-comment';
+
+const API_BASE_URL = 'https://api.prestaflow.io';
 
 function readComposerJson(): Record<string, unknown> | null {
   try {
@@ -89,6 +92,19 @@ export async function run(): Promise<void> {
         PRESTAFLOW_PS_VERSION: inputs.psVersion,
       });
       core.info(`Flashlight ready at ${flashlight.url} (PS ${inputs.psVersion})`);
+    }
+
+    try {
+      await prepareVisualBaselines({
+        apiBaseUrl: API_BASE_URL,
+        token: inputs.token,
+        projectId: inputs.projectId,
+        branch: process.env.GITHUB_REF_NAME,
+        enabled: inputs.visual,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      core.warning(`visual: prepare step failed, continuing without baselines: ${msg}`);
     }
 
     try {
