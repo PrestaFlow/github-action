@@ -13,6 +13,7 @@ export interface Inputs {
   prComment: boolean;
   githubToken: string;
   uploadArtifacts: boolean;
+  visual: boolean;
 }
 
 function getBool(name: string, defaultVal: boolean): boolean {
@@ -59,5 +60,6 @@ export function parseInputs(): Inputs {
     prComment: getBool('pr-comment', prCommentDefault),
     githubToken: core.getInput('github-token'),
     uploadArtifacts: getBool('upload-artifacts', true),
+    visual: getBool('visual', true),
   };
 }

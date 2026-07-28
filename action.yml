@@ -45,6 +45,10 @@ inputs:
     description: "Upload results.json + error screenshots as a GitHub artifact."
     required: false
     default: 'true'
+  visual:
+    description: "Enable visual regression round-trip with the API (download baselines before run, upload actual/diff after)."
+    required: false
+    default: 'true'
 
 outputs:
   id:

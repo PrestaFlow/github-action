@@ -35,6 +35,19 @@ describe('parseInputs', () => {
       expect(i.flashlightInitScripts).toBe('');
       expect(i.prComment).toBe(false);
       expect(i.uploadArtifacts).toBe(true);
+      expect(i.visual).toBe(true);
+    });
+  });
+
+  it('parses visual input', () => {
+    withInputs({ token: 't', visual: 'true' }, 'push', () => {
+      expect(parseInputs().visual).toBe(true);
+    });
+    withInputs({ token: 't', visual: 'false' }, 'push', () => {
+      expect(parseInputs().visual).toBe(false);
+    });
+    withInputs({ token: 't', visual: '' }, 'push', () => {
+      expect(parseInputs().visual).toBe(true);
     });
   });
 
