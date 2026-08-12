@@ -122,7 +122,7 @@ export async function run(): Promise<void> {
     }
 
     let report: TestReport = {
-      passed: 0, failed: 0, skipped: 0, todos: 0, total: 0, durationMs: 0, failures: [],
+      passed: 0, failed: 0, skipped: 0, todos: 0, total: 0, durationMs: 0, failures: [], suites: [],
     };
     const resultsPath = findResultsJson();
     if (resultsPath) {
@@ -156,6 +156,7 @@ export async function run(): Promise<void> {
         suites: inputs.suites,
         psVersion: inputs.flashlight ? inputs.psVersion : null,
         sha: process.env.GITHUB_SHA ?? '',
+        projectKey: inputs.projectId ?? '',
       });
       await postOrUpdatePrComment({
         token: inputs.githubToken || process.env.GITHUB_TOKEN || '',
