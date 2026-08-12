@@ -8,7 +8,7 @@ describe('setOutputs', () => {
 
   it('sets all outputs with status=success when failed=0', () => {
     setOutputs({
-      report: { passed: 10, failed: 0, skipped: 1, todos: 0, total: 11, durationMs: 5000, failures: [] },
+      report: { passed: 10, failed: 0, skipped: 1, todos: 0, total: 11, durationMs: 5000, failures: [], suites: [] },
       reportId: 'abc',
       reportUrl: 'https://app.prestaflow.io/reports/abc',
     });
@@ -24,7 +24,7 @@ describe('setOutputs', () => {
 
   it('sets status=failure when failed>0', () => {
     setOutputs({
-      report: { passed: 9, failed: 1, skipped: 0, todos: 0, total: 10, durationMs: 5000, failures: [] },
+      report: { passed: 9, failed: 1, skipped: 0, todos: 0, total: 10, durationMs: 5000, failures: [], suites: [] },
       reportId: 'x', reportUrl: 'u',
     });
     expect(core.setOutput).toHaveBeenCalledWith('status', 'failure');

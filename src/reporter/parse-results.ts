@@ -6,6 +6,14 @@ export interface Failure {
   line: number;
 }
 
+export interface SuiteStats {
+  name: string;
+  passed: number;
+  failed: number;
+  skipped: number;
+  durationMs: number;
+}
+
 export interface TestReport {
   passed: number;
   failed: number;
@@ -14,6 +22,7 @@ export interface TestReport {
   total: number;
   durationMs: number;
   failures: Failure[];
+  suites: SuiteStats[];
 }
 
 interface SuiteResult {
@@ -23,7 +32,7 @@ interface SuiteResult {
 }
 
 const empty = (): TestReport => ({
-  passed: 0, failed: 0, skipped: 0, todos: 0, total: 0, durationMs: 0, failures: [],
+  passed: 0, failed: 0, skipped: 0, todos: 0, total: 0, durationMs: 0, failures: [], suites: [],
 });
 
 const num = (v: unknown): number => {
@@ -47,13 +56,21 @@ function extractFailure(suiteName: string, test: unknown): Failure | null {
 
 function accumulateSuite(report: TestReport, suite: SuiteResult): void {
   const stats = (suite.stats ?? {}) as Record<string, unknown>;
-  report.passed += num(stats.passes);
-  report.failed += num(stats.failures);
-  report.skipped += num(stats.skips) + num(stats.skippeds);
-  report.todos += num(stats.todos);
-  report.durationMs += num(stats.time);
+  const passed = num(stats.passes);
+  const failed = num(stats.failures);
+  const skipped = num(stats.skips) + num(stats.skippeds);
+  const todos = num(stats.todos);
+  const durationMs = num(stats.time);
+
+  report.passed += passed;
+  report.failed += failed;
+  report.skipped += skipped;
+  report.todos += todos;
+  report.durationMs += durationMs;
 
   const suiteName = String(suite.suite ?? '');
+  report.suites.push({ name: suiteName, passed, failed, skipped, durationMs });
+
   const tests = Array.isArray(suite.tests) ? suite.tests : [];
   for (const t of tests) {
     const f = extractFailure(suiteName, t);

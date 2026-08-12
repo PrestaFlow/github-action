@@ -1,6 +1,6 @@
 import { buildCommentBody, MARKER } from '../../src/reporter/pr-comment-body';
 
-const baseReport = { passed: 10, failed: 0, skipped: 0, todos: 0, total: 10, durationMs: 60000, failures: [] };
+const baseReport = { passed: 10, failed: 0, skipped: 0, todos: 0, total: 10, durationMs: 60000, failures: [], suites: [] };
 
 describe('buildCommentBody', () => {
   it('always starts with marker', () => {

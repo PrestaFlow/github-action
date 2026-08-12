@@ -10,6 +10,7 @@ describe('parseResults', () => {
     const r = parseResults(fx('results.success.json'));
     expect(r).toEqual({
       passed: 47, failed: 0, skipped: 0, todos: 0, total: 47, durationMs: 134000, failures: [],
+      suites: [{ name: 'S1', passed: 47, failed: 0, skipped: 0, durationMs: 134000 }],
     });
   });
 
@@ -43,10 +44,10 @@ describe('parseResults', () => {
 
   it('handles missing / empty payload safely', () => {
     expect(parseResults({})).toEqual({
-      passed: 0, failed: 0, skipped: 0, todos: 0, total: 0, durationMs: 0, failures: [],
+      passed: 0, failed: 0, skipped: 0, todos: 0, total: 0, durationMs: 0, failures: [], suites: [],
     });
     expect(parseResults(null)).toEqual({
-      passed: 0, failed: 0, skipped: 0, todos: 0, total: 0, durationMs: 0, failures: [],
+      passed: 0, failed: 0, skipped: 0, todos: 0, total: 0, durationMs: 0, failures: [], suites: [],
     });
   });
 
@@ -66,6 +67,33 @@ describe('parseResults', () => {
     expect(r.failures[0]).toEqual({
       suite: 'Legacy', title: 'legacy fail', message: 'legacy msg', file: '/l.php', line: 7,
     });
+  });
+
+  it('populates suites[] from payload.suites', () => {
+    const raw = {
+      suites: [
+        { suite: 'BackOffice',  stats: { passes: 12, failures: 0, skips: 0, todos: 0, time: 18000 }, tests: [] },
+        { suite: 'FrontOffice', stats: { passes: 12, failures: 0, skips: 0, todos: 0, time: 24000 }, tests: [] },
+      ],
+    };
+    const report = parseResults(raw);
+    expect(report.suites).toHaveLength(2);
+    expect(report.suites[0]).toEqual({ name: 'BackOffice',  passed: 12, failed: 0, skipped: 0, durationMs: 18000 });
+    expect(report.suites[1]).toEqual({ name: 'FrontOffice', passed: 12, failed: 0, skipped: 0, durationMs: 24000 });
+  });
+
+  it('produces a single-entry suites[] for legacy root-level stats', () => {
+    const raw = { suite: 'BackOffice', stats: { passes: 5, failures: 1, skips: 0, todos: 0, time: 8000 }, tests: [] };
+    const report = parseResults(raw);
+    expect(report.suites).toHaveLength(1);
+    expect(report.suites[0].name).toBe('BackOffice');
+    expect(report.suites[0].passed).toBe(5);
+    expect(report.suites[0].failed).toBe(1);
+  });
+
+  it('yields empty suites[] on garbage input', () => {
+    expect(parseResults(null).suites).toEqual([]);
+    expect(parseResults({}).suites).toEqual([]);
   });
 
   it('handles failing test with missing expect.fail gracefully', () => {
