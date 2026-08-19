@@ -28,6 +28,8 @@ export async function uploadToApi(p: UploadParams): Promise<UploadResult> {
   if (ref) form.append('ref', ref);
   const ciRunId = process.env.GITHUB_RUN_ID;
   if (ciRunId) form.append('ci_run_id', ciRunId);
+  const githubRepository = process.env.GITHUB_REPOSITORY;
+  if (githubRepository) form.append('github_repository', githubRepository);
 
   const patterns = [
     '**/prestaflow/results.json',

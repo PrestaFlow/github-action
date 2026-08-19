@@ -127067,6 +127067,9 @@ async function uploadToApi(p) {
     const ciRunId = process.env.GITHUB_RUN_ID;
     if (ciRunId)
         form.append('ci_run_id', ciRunId);
+    const githubRepository = process.env.GITHUB_REPOSITORY;
+    if (githubRepository)
+        form.append('github_repository', githubRepository);
     const patterns = [
         '**/prestaflow/results.json',
         '**/prestaflow/screens/errors/*.png',
