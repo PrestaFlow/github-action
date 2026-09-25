@@ -34,4 +34,27 @@ describe('runComposer', () => {
       }),
     );
   });
+
+  it('strips keys that are provided through .env.local from the child env', async () => {
+    // Under variables_order=GPCS the process env lands in $_SERVER only, and
+    // phpdotenv (immutable) then refuses to load the same key from .env.local:
+    // the key would end up missing from $_ENV. So these keys must not be
+    // inherited by the composer process.
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    const orig = process.env.PRESTAFLOW_BO_EMAIL;
+    process.env.PRESTAFLOW_BO_EMAIL = 'from-step-env@x';
+    try {
+      await runComposer({
+        execute: true,
+        env: { PRESTAFLOW_SUITES: 'A', PRESTAFLOW_FO_URL: 'http://x/' },
+        stripEnv: ['PRESTAFLOW_BO_EMAIL', 'PRESTAFLOW_FO_URL'],
+      });
+    } finally {
+      if (orig === undefined) delete process.env.PRESTAFLOW_BO_EMAIL; else process.env.PRESTAFLOW_BO_EMAIL = orig;
+    }
+    const env = execMock.mock.calls[0][2].env as Record<string, string>;
+    expect(env.PRESTAFLOW_SUITES).toBe('A');
+    expect(env).not.toHaveProperty('PRESTAFLOW_BO_EMAIL');
+    expect(env).not.toHaveProperty('PRESTAFLOW_FO_URL');
+  });
 });

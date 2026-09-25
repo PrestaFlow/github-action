@@ -5,6 +5,8 @@ import * as fs from 'fs';
 export interface RunComposerParams {
   execute: boolean;
   env: Record<string, string>;
+  /** Keys removed from the inherited env (they are provided via .env.local). */
+  stripEnv?: string[];
 }
 
 export async function runComposer(p: RunComposerParams): Promise<void> {
@@ -16,7 +18,7 @@ export async function runComposer(p: RunComposerParams): Promise<void> {
     core.info('No composer.json found — skipping composer test run.');
     return;
   }
-  await exec.exec('composer', ['run', 'prestaflow:json:file'], {
-    env: { ...process.env, ...p.env } as Record<string, string>,
-  });
+  const env = { ...process.env, ...p.env } as Record<string, string>;
+  for (const k of p.stripEnv ?? []) delete env[k];
+  await exec.exec('composer', ['run', 'prestaflow:json:file'], { env });
 }
