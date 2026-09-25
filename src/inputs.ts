@@ -10,6 +10,7 @@ export interface Inputs {
   psVersion: string;
   flashlightMount: MountMode;
   flashlightInitScripts: string;
+  flashlightInstallModule: boolean;
   prComment: boolean;
   githubToken: string;
   uploadArtifacts: boolean;
@@ -57,6 +58,7 @@ export function parseInputs(): Inputs {
     psVersion: core.getInput('ps-version') || 'latest',
     flashlightMount: getMountMode(),
     flashlightInitScripts: core.getInput('flashlight-init-scripts').trim(),
+    flashlightInstallModule: getBool('flashlight-install-module', true),
     prComment: getBool('pr-comment', prCommentDefault),
     githubToken: core.getInput('github-token'),
     uploadArtifacts: getBool('upload-artifacts', true),

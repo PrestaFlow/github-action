@@ -5,6 +5,7 @@ import { parseInputs } from './inputs';
 import { resolveMount } from './flashlight/mount';
 import { renderCompose } from './flashlight/compose-template';
 import { writeFlashlightDotenv, DotenvHandle } from './flashlight/dotenv';
+import { moduleToInstall, installModule } from './flashlight/install-module';
 import { assertDockerAvailable, startFlashlight, pickPort, FlashlightHandle } from './flashlight/docker';
 import { suitesEnv } from './runner/suites';
 import { runComposer } from './runner/composer';
@@ -75,6 +76,12 @@ export async function run(): Promise<void> {
         initScriptsHostPath,
       });
       flashlight = await startFlashlight({ composeYaml, port });
+      const moduleName = inputs.flashlightInstallModule
+        ? moduleToInstall({ composerJson: cj as { name?: string; type?: string } | null, containerPath: mount.containerPath })
+        : null;
+      if (moduleName) {
+        await installModule({ composePath: flashlight.composePath, name: moduleName });
+      }
       // The PHP library only reads its settings from $_ENV, filled by
       // phpdotenv from the first existing file among .env.local and .env
       // (immutable: a key already present in $_SERVER/$_ENV is never loaded).

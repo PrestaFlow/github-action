@@ -22,6 +22,14 @@ Run [PrestaFlow](https://prestaflow.io) tests in your GitHub Actions workflows.
     ps-version: '9.0.0'
 ```
 
+### Module installation
+
+When `composer.json` has `"type": "prestashop-module"`, the workspace is mounted in
+`modules/<name>` and, once the shop is ready, the action runs
+`php bin/console prestashop:module install <name>` in the container. If an init-script
+already installed the module, PrestaShop upgrades it instead, which is harmless. A
+failed install only emits a warning. Disable it with `flashlight-install-module: 'false'`.
+
 ### How the tests are configured with Flashlight
 
 The PrestaFlow PHP library reads its settings from `$_ENV`, which phpdotenv fills from

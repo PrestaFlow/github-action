@@ -33,6 +33,10 @@ inputs:
     description: "Optional path (absolute or relative to the workspace) to a directory of Flashlight init scripts. Mounted read-only at /tmp/init-scripts. Scripts must be executable and start with a shebang; they run alphabetically at container boot."
     required: false
     default: ''
+  flashlight-install-module:
+    description: "When the workspace is a composer prestashop-module mounted in Flashlight, run 'php bin/console prestashop:module install <name>' in the container once the shop is ready. Harmless if an init-script already installed it (PrestaShop upgrades it instead). A failed install only emits a warning. Set to 'false' to skip."
+    required: false
+    default: 'true'
   pr-comment:
     description: "Post/update a summary comment on the pull request (one comment per projectId and, with Flashlight, per ps-version). Defaults to true on pull_request events, false otherwise."
     required: false

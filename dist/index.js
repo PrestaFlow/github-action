@@ -126265,7 +126265,7 @@ async function startFlashlight(p) {
         await tearDown({ onFailure: true });
         throw e;
     }
-    return { url, tearDown };
+    return { url, composePath, tearDown };
 }
 
 
@@ -126436,6 +126436,102 @@ function writeFlashlightDotenv(p) {
 
 /***/ }),
 
+/***/ 56886:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.moduleToInstall = moduleToInstall;
+exports.installModule = installModule;
+const core = __importStar(__nccwpck_require__(37484));
+const exec = __importStar(__nccwpck_require__(95236));
+const MODULES_DIR = '/var/www/html/modules/';
+const NAME_RE = /^[A-Za-z0-9_-]+$/;
+/**
+ * Module to install after boot: only a composer `prestashop-module` mounted
+ * under modules/ (never a theme, a root mount, or the modules/<repo> fallback
+ * used when composer.json does not say what the repository is).
+ */
+function moduleToInstall(p) {
+    if (p.composerJson?.type !== 'prestashop-module')
+        return null;
+    if (!p.containerPath.startsWith(MODULES_DIR))
+        return null;
+    const name = p.containerPath.slice(MODULES_DIR.length);
+    return NAME_RE.test(name) ? name : null;
+}
+/**
+ * Run `bin/console prestashop:module install <name>` in the Flashlight
+ * container. On an already installed module (e.g. by an init-script)
+ * PrestaShop runs an upgrade instead and reports the same success message
+ * (checked on the 1.7.8.11, 8.1.7 and 9.0.0 images). The exit code is not
+ * reliable (8.1 and 9.0 exit 0 on failure), so success is read from the
+ * output. A failure only warns: the tests will tell whether the module is
+ * needed.
+ */
+async function installModule(p) {
+    if (!NAME_RE.test(p.name)) {
+        core.warning(`flashlight-install-module: invalid module name "${p.name}", skipping install.`);
+        return false;
+    }
+    let output = '';
+    const collect = (b) => { output += b.toString(); };
+    try {
+        core.info(`Installing module ${p.name} in Flashlight (disable with flashlight-install-module: false)`);
+        await exec.exec('docker', [
+            'compose', '-f', p.composePath, 'exec', '-T', '-w', '/var/www/html', 'prestashop',
+            'php', 'bin/console', 'prestashop:module', 'install', p.name,
+        ], { ignoreReturnCode: true, listeners: { stdout: collect, stderr: collect } });
+    }
+    catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        core.warning(`Could not install module ${p.name} in Flashlight: ${msg}. Set flashlight-install-module: false to skip this step.`);
+        return false;
+    }
+    if (/succeeded/i.test(output))
+        return true;
+    core.warning(`Module ${p.name} was not installed in Flashlight:\n${output.trim() || '(no output)'}\n`
+        + 'Set flashlight-install-module: false to skip this step (e.g. if an init-script installs it).');
+    return false;
+}
+
+
+/***/ }),
+
 /***/ 71255:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -126554,6 +126650,7 @@ function parseInputs() {
         psVersion: core.getInput('ps-version') || 'latest',
         flashlightMount: getMountMode(),
         flashlightInitScripts: core.getInput('flashlight-init-scripts').trim(),
+        flashlightInstallModule: getBool('flashlight-install-module', true),
         prComment: getBool('pr-comment', prCommentDefault),
         githubToken: core.getInput('github-token'),
         uploadArtifacts: getBool('upload-artifacts', true),
@@ -126611,6 +126708,7 @@ const inputs_1 = __nccwpck_require__(38422);
 const mount_1 = __nccwpck_require__(71255);
 const compose_template_1 = __nccwpck_require__(17513);
 const dotenv_1 = __nccwpck_require__(58570);
+const install_module_1 = __nccwpck_require__(56886);
 const docker_1 = __nccwpck_require__(60704);
 const suites_1 = __nccwpck_require__(24529);
 const composer_1 = __nccwpck_require__(33502);
@@ -126678,6 +126776,12 @@ async function run() {
                 initScriptsHostPath,
             });
             flashlight = await (0, docker_1.startFlashlight)({ composeYaml, port });
+            const moduleName = inputs.flashlightInstallModule
+                ? (0, install_module_1.moduleToInstall)({ composerJson: cj, containerPath: mount.containerPath })
+                : null;
+            if (moduleName) {
+                await (0, install_module_1.installModule)({ composePath: flashlight.composePath, name: moduleName });
+            }
             // The PHP library only reads its settings from $_ENV, filled by
             // phpdotenv from the first existing file among .env.local and .env
             // (immutable: a key already present in $_SERVER/$_ENV is never loaded).
