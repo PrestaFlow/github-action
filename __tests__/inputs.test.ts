@@ -36,6 +36,16 @@ describe('parseInputs', () => {
       expect(i.prComment).toBe(false);
       expect(i.uploadArtifacts).toBe(true);
       expect(i.visual).toBe(true);
+      expect(i.flashlightInstallModule).toBe(true);
+    });
+  });
+
+  it('parses flashlight-install-module input', () => {
+    withInputs({ token: 't', 'flashlight-install-module': 'false' }, 'push', () => {
+      expect(parseInputs().flashlightInstallModule).toBe(false);
+    });
+    withInputs({ token: 't', 'flashlight-install-module': '' }, 'push', () => {
+      expect(parseInputs().flashlightInstallModule).toBe(true);
     });
   });
 

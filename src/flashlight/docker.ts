@@ -74,6 +74,7 @@ export interface StartParams {
 
 export interface FlashlightHandle {
   url: string;
+  composePath: string;
   tearDown: (opts: { onFailure: boolean }) => Promise<void>;
 }
 
@@ -106,5 +107,5 @@ export async function startFlashlight(p: StartParams): Promise<FlashlightHandle>
     throw e;
   }
 
-  return { url, tearDown };
+  return { url, composePath, tearDown };
 }
