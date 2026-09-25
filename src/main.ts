@@ -4,6 +4,7 @@ import * as path from 'path';
 import { parseInputs } from './inputs';
 import { resolveMount } from './flashlight/mount';
 import { renderCompose } from './flashlight/compose-template';
+import { writeFlashlightDotenv, DotenvHandle } from './flashlight/dotenv';
 import { assertDockerAvailable, startFlashlight, pickPort, FlashlightHandle } from './flashlight/docker';
 import { suitesEnv } from './runner/suites';
 import { runComposer } from './runner/composer';
@@ -30,20 +31,9 @@ function findResultsJson(): string | null {
   return null;
 }
 
-function writeDotEnvLocal(workspace: string, vars: Record<string, string>): void {
-  // The PHP library reads env vars through phpdotenv (Dotenv::createImmutable),
-  // which only picks up .env / .env.local files — NOT process env, unless PHP
-  // is built with variables_order including 'E' (rarely the case in CI).
-  // Writing .env.local (loaded before .env, values are immutable so they win)
-  // guarantees the lib sees our values regardless of PHP config.
-  const path = `${workspace}/.env.local`;
-  const body = Object.entries(vars).map(([k, v]) => `${k}=${v}`).join('\n') + '\n';
-  fs.writeFileSync(path, body);
-  core.info(`Wrote ${Object.keys(vars).length} vars to ${path}`);
-}
-
 export async function run(): Promise<void> {
   let flashlight: FlashlightHandle | null = null;
+  let dotenv: DotenvHandle | null = null;
   let stepFailed = false;
 
   try {
@@ -85,11 +75,19 @@ export async function run(): Promise<void> {
         initScriptsHostPath,
       });
       flashlight = await startFlashlight({ composeYaml, port });
-      env.PRESTAFLOW_FO_URL = `${flashlight.url}/`;
-      env.PRESTAFLOW_PS_VERSION = inputs.psVersion;
-      writeDotEnvLocal(workspace, {
-        PRESTAFLOW_FO_URL: `${flashlight.url}/`,
-        PRESTAFLOW_PS_VERSION: inputs.psVersion,
+      // The PHP library only reads its settings from $_ENV, filled by
+      // phpdotenv from the first existing file among .env.local and .env
+      // (immutable: a key already present in $_SERVER/$_ENV is never loaded).
+      // Under variables_order=GPCS (production php.ini, setup-php default) the
+      // process env reaches $_SERVER but not $_ENV, so a PRESTAFLOW_* var set
+      // through `env:` is both invisible to the lib and blocks the same key
+      // from the file. Hence: everything goes into .env.local (user file and
+      // step env merged in), and those keys are stripped from the PHP env.
+      dotenv = writeFlashlightDotenv({
+        workspace,
+        foUrl: `${flashlight.url}/`,
+        psVersion: inputs.psVersion,
+        processEnv: process.env,
       });
       core.info(`Flashlight ready at ${flashlight.url} (PS ${inputs.psVersion})`);
     }
@@ -108,7 +106,7 @@ export async function run(): Promise<void> {
     }
 
     try {
-      await runComposer({ execute: inputs.execute, env });
+      await runComposer({ execute: inputs.execute, env, stripEnv: dotenv?.keys ?? [] });
     } catch (e) {
       // Composer exits non-zero when tests fail — that's the normal reporting
       // channel. Do NOT rethrow, or we skip the parse/upload/PR-comment path
@@ -172,6 +170,7 @@ export async function run(): Promise<void> {
     const msg = e instanceof Error ? e.message : String(e);
     core.setFailed(msg);
   } finally {
+    if (dotenv) dotenv.restore();
     if (flashlight) {
       await flashlight.tearDown({ onFailure: stepFailed });
     }

@@ -22,6 +22,41 @@ Run [PrestaFlow](https://prestaflow.io) tests in your GitHub Actions workflows.
     ps-version: '9.0.0'
 ```
 
+### How the tests are configured with Flashlight
+
+The PrestaFlow PHP library reads its settings from `$_ENV`, which phpdotenv fills from
+**one** file: `.env.local` if it exists, otherwise `.env`. With `variables_order=GPCS`
+(the production `php.ini`, used by `shivammathur/setup-php`), the process environment
+never reaches `$_ENV`.
+
+So when `flashlight: true`, the action writes a `.env.local` for the run, built from
+(highest priority first):
+
+1. every `PRESTAFLOW_*` variable set on the step with `env:` (works whatever `variables_order` is);
+2. the values imposed by the Flashlight container: `PRESTAFLOW_FO_URL`,
+   `PRESTAFLOW_BO_URL` (`<fo>admin-dev/`) and `PRESTAFLOW_PS_VERSION`;
+3. your own dotenv file, copied as is: `.env.local` if it exists, otherwise `.env`;
+4. the Flashlight back-office credentials: `PRESTAFLOW_BO_EMAIL=admin@prestashop.com`,
+   `PRESTAFLOW_BO_PASSWD=prestashop`.
+
+If your repository already has a `.env.local`, it is merged and put back at the end of
+the run; otherwise the generated file is removed.
+
+```yaml
+- uses: PrestaFlow/github-action@v2
+  env:
+    PRESTAFLOW_LOCALE: fr
+    PRESTAFLOW_EXTRA_HEADERS: '{"X-Debug":"1"}'
+  with:
+    token: ${{ secrets.PRESTAFLOW_TOKEN }}
+    flashlight: true
+    ps-version: '8.1.7'
+```
+
+If your committed `.env` sets `PRESTAFLOW_BO_EMAIL` / `PRESTAFLOW_BO_PASSWD` for your
+local shop, they win over the Flashlight defaults: remove them from `.env`, or set the
+Flashlight ones with `env:` on the step.
+
 ## PR comment
 
 When run in a `pull_request` workflow, the action posts (or updates) a comment on the PR with the run summary — a global pass/fail count, a per-suite table when there is more than one suite, and a collapsible list of up to 20 failed tests with a "+N more" footer for anything beyond.

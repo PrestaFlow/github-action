@@ -18,7 +18,7 @@ inputs:
     required: false
     default: ''
   flashlight:
-    description: "Start a PrestaShop Flashlight Docker instance for the tests to target."
+    description: "Start a PrestaShop Flashlight Docker instance for the tests to target. A temporary .env.local is written for the run (Flashlight URLs, PS version and back-office credentials, merged with your .env/.env.local and any PRESTAFLOW_* set with env: on the step); an existing .env.local is restored afterwards."
     required: false
     default: 'false'
   ps-version:
