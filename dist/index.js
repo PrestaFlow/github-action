@@ -126745,7 +126745,10 @@ async function run() {
             core.info('Skipping API upload (no results.json to send).');
         }
         if (inputs.uploadArtifacts) {
-            await (0, artifacts_1.uploadArtifacts)();
+            await (0, artifacts_1.uploadArtifacts)({
+                psVersion: inputs.flashlight ? inputs.psVersion : null,
+                suites: inputs.suites,
+            });
         }
         (0, outputs_1.setOutputs)({ report, reportId: uploaded.id, reportUrl: uploaded.url });
         if (inputs.prComment && process.env.GITHUB_EVENT_NAME === 'pull_request') {
@@ -127334,11 +127337,35 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.artifactName = artifactName;
 exports.uploadArtifacts = uploadArtifacts;
 const core = __importStar(__nccwpck_require__(37484));
 const glob = __importStar(__nccwpck_require__(47206));
 const artifact_1 = __nccwpck_require__(76846);
-async function uploadArtifacts() {
+const crypto_1 = __nccwpck_require__(76982);
+function slug(s) {
+    // Keep clear of the characters the artifact service rejects (" : < > | * ? \ / CR LF).
+    return s.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+}
+// Artifact names must be unique within a workflow run and @actions/artifact v2
+// cannot overwrite: in a matrix, every leg used to upload the same name and
+// all but the first got a 409 Conflict. The matrix values themselves are not
+// exposed to actions, so the name is built from what distinguishes the usual
+// legs (job id, Flashlight PS version, suites), with a random fallback below.
+function artifactName(p = {}) {
+    const runId = process.env.GITHUB_RUN_ID ?? 'local';
+    const attempt = process.env.GITHUB_RUN_ATTEMPT ?? '1';
+    const parts = [`prestaflow-report-${runId}-${attempt}`];
+    const job = slug(process.env.GITHUB_JOB ?? '');
+    if (job)
+        parts.push(job);
+    if (p.psVersion)
+        parts.push(`ps${slug(p.psVersion)}`);
+    if (p.suites?.length)
+        parts.push(slug(p.suites.join('_')));
+    return parts.join('-');
+}
+async function uploadArtifacts(p = {}) {
     const patterns = ['**/prestaflow/results.json', '**/prestaflow/screens/errors/*.png'];
     const globber = await glob.create(patterns.join('\n'));
     const files = await globber.glob();
@@ -127346,14 +127373,24 @@ async function uploadArtifacts() {
         core.info('No PrestaFlow output files found — skipping artifact upload.');
         return;
     }
-    const runId = process.env.GITHUB_RUN_ID ?? 'local';
-    const attempt = process.env.GITHUB_RUN_ATTEMPT ?? '1';
-    const name = `prestaflow-report-${runId}-${attempt}`;
+    const name = artifactName(p);
     const rootDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
     const client = new artifact_1.DefaultArtifactClient();
     try {
         await client.uploadArtifact(name, files, rootDir, {});
         core.info(`Uploaded artifact ${name} (${files.length} files)`);
+        return;
+    }
+    catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        core.info(`Artifact upload as ${name} failed (${msg}); retrying with a unique suffix.`);
+    }
+    // Two legs of a matrix can still share job/PS version/suites (e.g. a matrix
+    // on the PHP version): retry once under a random suffix.
+    const fallback = `${name}-${(0, crypto_1.randomBytes)(3).toString('hex')}`;
+    try {
+        await client.uploadArtifact(fallback, files, rootDir, {});
+        core.info(`Uploaded artifact ${fallback} (${files.length} files)`);
     }
     catch (e) {
         const msg = e instanceof Error ? e.message : String(e);

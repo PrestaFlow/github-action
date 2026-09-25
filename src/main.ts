@@ -142,7 +142,10 @@ export async function run(): Promise<void> {
     }
 
     if (inputs.uploadArtifacts) {
-      await uploadArtifacts();
+      await uploadArtifacts({
+        psVersion: inputs.flashlight ? inputs.psVersion : null,
+        suites: inputs.suites,
+      });
     }
 
     setOutputs({ report, reportId: uploaded.id, reportUrl: uploaded.url });

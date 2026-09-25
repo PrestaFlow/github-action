@@ -42,7 +42,7 @@ inputs:
     required: false
     default: ${{ github.token }}
   upload-artifacts:
-    description: "Upload results.json + error screenshots as a GitHub artifact."
+    description: "Upload results.json + error screenshots as a GitHub artifact named prestaflow-report-<run>-<attempt>-<job>[-ps<ps-version>][-<suites>] (unique per matrix leg; a random suffix is added if the name is still taken)."
     required: false
     default: 'true'
   visual:
