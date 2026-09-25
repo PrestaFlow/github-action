@@ -126177,6 +126177,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.pickPort = pickPort;
+exports.waitForShop = waitForShop;
 exports.assertDockerAvailable = assertDockerAvailable;
 exports.startFlashlight = startFlashlight;
 const core = __importStar(__nccwpck_require__(37484));
@@ -126199,23 +126200,34 @@ async function pickPort(candidates) {
     }
     throw new Error(`No free port among ${candidates.join(', ')}`);
 }
-async function waitFor(url, timeoutMs) {
-    const start = Date.now();
-    while (Date.now() - start < timeoutMs) {
-        const ok = await new Promise(resolve => {
-            const req = http.get(url, res => {
-                const code = res.statusCode ?? 0;
-                resolve(code >= 200 && code < 400);
-                res.resume();
-            });
-            req.on('error', () => resolve(false));
-            req.setTimeout(3000, () => { req.destroy(); resolve(false); });
+function statusOf(url) {
+    return new Promise(resolve => {
+        const req = http.get(url, res => {
+            resolve(res.statusCode ?? 0);
+            res.resume();
         });
-        if (ok)
+        req.on('error', () => resolve(0));
+        req.setTimeout(3000, () => { req.destroy(); resolve(0); });
+    });
+}
+// Flashlight's front answers as soon as the web server is up, before the
+// post-install scripts are done, so a 2xx on `/` only proves that something
+// listens on the port. The admin folder is renamed to the fixed `admin-dev`,
+// which redirects (302) to the login page once PHP and PrestaShop are really
+// serving; 200 is accepted too in case a future image serves the login page
+// directly.
+async function waitForShop(baseUrl, opts) {
+    const url = `${baseUrl}/admin-dev/`;
+    const interval = opts.intervalMs ?? 2000;
+    const start = Date.now();
+    let last = 0;
+    while (Date.now() - start < opts.timeoutMs) {
+        last = await statusOf(url);
+        if (last === 200 || last === 302)
             return;
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, interval));
     }
-    throw new Error(`Flashlight not ready after ${timeoutMs}ms at ${url}`);
+    throw new Error(`Flashlight not ready after ${opts.timeoutMs}ms: ${url} never answered 302/200 (last status: ${last || 'no response'})`);
 }
 async function assertDockerAvailable() {
     try {
@@ -126230,10 +126242,7 @@ async function startFlashlight(p) {
     const composePath = path.join(tmpDir, 'docker-compose.yml');
     fs.writeFileSync(composePath, p.composeYaml);
     await exec.exec('docker', ['compose', '-f', composePath, 'up', '-d']);
-    const url = `http://localhost:${p.port}`;
-    // 4 min: MySQL healthcheck + PS first-boot install can legitimately take
-    // 90-150s on cold GitHub Actions runners.
-    await waitFor(url, 240_000);
+    const url = `http://${p.host ?? 'localhost'}:${p.port}`;
     const tearDown = async ({ onFailure }) => {
         if (onFailure) {
             core.startGroup('Flashlight logs');
@@ -126246,6 +126255,16 @@ async function startFlashlight(p) {
         }
         catch { /* ignore */ }
     };
+    try {
+        // 4 min: MySQL healthcheck + PS first-boot install can legitimately take
+        // 90-150s on cold GitHub Actions runners.
+        await waitForShop(url, { timeoutMs: p.readyTimeoutMs ?? 240_000, intervalMs: p.pollIntervalMs });
+    }
+    catch (e) {
+        // No handle is returned on failure, so dump the logs and clean up here.
+        await tearDown({ onFailure: true });
+        throw e;
+    }
     return { url, tearDown };
 }
 
