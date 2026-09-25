@@ -34,7 +34,7 @@ inputs:
     required: false
     default: ''
   pr-comment:
-    description: "Post/update a summary comment on the pull request. Defaults to true on pull_request events, false otherwise."
+    description: "Post/update a summary comment on the pull request (one comment per projectId and, with Flashlight, per ps-version). Defaults to true on pull_request events, false otherwise."
     required: false
     default: ''
   github-token:

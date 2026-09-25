@@ -126922,8 +126922,18 @@ exports.MARKER = exports.LEGACY_MARKER = void 0;
 exports.markerFor = markerFor;
 exports.buildCommentBody = buildCommentBody;
 exports.LEGACY_MARKER = '<!-- prestaflow-report -->';
-function markerFor(projectKey) {
+// One comment per (project, PS version): in a Flashlight matrix every leg
+// posts its own comment instead of overwriting the previous leg's one. A
+// single comment with one section per version would need a read-modify-write
+// of the same comment by concurrent jobs, and GitHub offers no conditional
+// update to make that race-free.
+function markerFor(projectKey, psVersion) {
+    if (psVersion)
+        return `<!-- prestaflow-run:${projectKey}:ps-${psVersion} -->`;
     return projectKey === '' ? exports.LEGACY_MARKER : `<!-- prestaflow-run:${projectKey} -->`;
+}
+function title(base, psVersion) {
+    return psVersion ? `${base} · PS ${psVersion}` : base;
 }
 // Backward-compat export — still consumed by pr-comment.ts until Task 3 replaces the finder.
 exports.MARKER = exports.LEGACY_MARKER;
@@ -126970,8 +126980,8 @@ function successBody(p) {
     const meta = metaLine(p.suites, p.psVersion);
     const perSuite = renderPerSuiteTable(p.report.suites);
     const lines = [
-        markerFor(p.projectKey),
-        `### PrestaFlow — Test report ✅`,
+        markerFor(p.projectKey, p.psVersion),
+        title(`### PrestaFlow — Test report ✅`, p.psVersion),
         ``,
         `**${p.report.total} tests passed in ${formatDuration(p.report.durationMs)}**`,
         ``,
@@ -126996,8 +127006,8 @@ function failureBody(p) {
     const meta = metaLine(p.suites, p.psVersion);
     const perSuite = renderPerSuiteTable(p.report.suites);
     const lines = [
-        markerFor(p.projectKey),
-        `### PrestaFlow — Test report`,
+        markerFor(p.projectKey, p.psVersion),
+        title(`### PrestaFlow — Test report`, p.psVersion),
         ``,
         `**Result: ❌ ${p.report.failed} failures out of ${p.report.total} tests**`,
         ``,
@@ -127068,25 +127078,35 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.postOrUpdatePrComment = postOrUpdatePrComment;
 const core = __importStar(__nccwpck_require__(37484));
 const github = __importStar(__nccwpck_require__(93228));
-const MARKER_PATTERNS = ['<!-- prestaflow-run:', '<!-- prestaflow-report -->'];
+const LEGACY_MARKER = '<!-- prestaflow-report -->';
 const MAX_PAGES = 5;
 const PER_PAGE = 100;
-function isPrestaflowComment(body) {
-    const b = body ?? '';
-    return MARKER_PATTERNS.some((p) => b.startsWith(p));
+// The body built by buildCommentBody starts with its marker line
+// (one marker per project and PS version, see markerFor).
+function firstLine(body) {
+    return (body ?? '').split('\n', 1)[0].trim();
 }
-async function findExistingComment(octokit, owner, repo, issue_number) {
+async function findExistingComment(octokit, owner, repo, issue_number, marker) {
+    // Exact match on the marker line: a prefix match let a project (or a matrix
+    // leg) overwrite another one's comment. A non-versioned marker may still
+    // take over the pre-v2 legacy comment, if no exact match exists.
+    const mayAdoptLegacy = marker.startsWith('<!-- prestaflow-run:') && !marker.includes(':ps-');
+    let legacy = null;
     for (let page = 1; page <= MAX_PAGES; page++) {
         const { data } = await octokit.rest.issues.listComments({
             owner, repo, issue_number, per_page: PER_PAGE, page,
         });
-        const hit = data.find((c) => isPrestaflowComment(c.body));
-        if (hit)
-            return { id: hit.id };
+        for (const c of data) {
+            const line = firstLine(c.body);
+            if (line === marker)
+                return { id: c.id };
+            if (mayAdoptLegacy && !legacy && line === LEGACY_MARKER)
+                legacy = { id: c.id };
+        }
         if (data.length < PER_PAGE)
-            return null;
+            break;
     }
-    return null;
+    return legacy;
 }
 async function postOrUpdatePrComment(p) {
     try {
@@ -127098,7 +127118,7 @@ async function postOrUpdatePrComment(p) {
         const issueNumber = ctx.payload.pull_request.number;
         const { owner, repo } = ctx.repo;
         const octokit = github.getOctokit(p.token);
-        const existing = await findExistingComment(octokit, owner, repo, issueNumber);
+        const existing = await findExistingComment(octokit, owner, repo, issueNumber, firstLine(p.body));
         if (existing) {
             await octokit.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body: p.body });
             core.info(`Updated PR comment #${existing.id}`);

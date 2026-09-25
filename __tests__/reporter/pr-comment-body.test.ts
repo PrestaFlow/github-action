@@ -1,4 +1,4 @@
-import { buildCommentBody, MARKER } from '../../src/reporter/pr-comment-body';
+import { buildCommentBody, markerFor, MARKER } from '../../src/reporter/pr-comment-body';
 
 const baseReport = { passed: 10, failed: 0, skipped: 0, todos: 0, total: 10, durationMs: 60000, failures: [], suites: [] };
 
@@ -28,6 +28,17 @@ describe('buildCommentBody', () => {
     expect(body).toMatch(/PS `9.0.0`/);
     expect(body).toMatch(/https:\/\/x/);
     expect(body).toMatch(/`abc123d`/);
+  });
+
+  it('uses one marker per (project, PS version) so matrix legs get their own comment', () => {
+    expect(markerFor('pk_X')).toBe('<!-- prestaflow-run:pk_X -->');
+    expect(markerFor('pk_X', '8.1.7')).toBe('<!-- prestaflow-run:pk_X:ps-8.1.7 -->');
+    expect(markerFor('', '9.0.0')).toBe('<!-- prestaflow-run::ps-9.0.0 -->');
+    expect(markerFor('')).toBe(MARKER);
+
+    const body = buildCommentBody({ report: baseReport, reportUrl: '', suites: [], psVersion: '8.1.7', sha: 'a', projectKey: 'pk_X' });
+    expect(body.split('\n')[0]).toBe('<!-- prestaflow-run:pk_X:ps-8.1.7 -->');
+    expect(body).toMatch(/^### PrestaFlow — Test report ✅ · PS 8\.1\.7$/m);
   });
 
   it('omits suites and psVersion when absent', () => {

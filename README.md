@@ -61,6 +61,11 @@ Flashlight ones with `env:` on the step.
 
 When run in a `pull_request` workflow, the action posts (or updates) a comment on the PR with the run summary — a global pass/fail count, a per-suite table when there is more than one suite, and a collapsible list of up to 20 failed tests with a "+N more" footer for anything beyond.
 
+There is one comment per project (`projectId`) and, with Flashlight, per `ps-version`:
+in a matrix over PrestaShop versions each version keeps its own comment, updated on
+every push. Comments posted by earlier `@v2` releases without a PS version in their
+marker are no longer updated by Flashlight runs.
+
 ### Required workflow permissions
 
 ```yaml
@@ -78,7 +83,7 @@ Without `pull-requests: write` the action logs a warning and continues — your 
   with:
     token: ${{ secrets.PRESTAFLOW_API_TOKEN }}
     projectId: pk_01ABC...
-    comment: 'false'
+    pr-comment: 'false'
 ```
 
 <!-- TODO: add screenshot of the PR comment -->

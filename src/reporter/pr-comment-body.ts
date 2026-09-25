@@ -2,8 +2,18 @@ import type { TestReport, Failure, SuiteStats } from './parse-results';
 
 export const LEGACY_MARKER = '<!-- prestaflow-report -->';
 
-export function markerFor(projectKey: string): string {
+// One comment per (project, PS version): in a Flashlight matrix every leg
+// posts its own comment instead of overwriting the previous leg's one. A
+// single comment with one section per version would need a read-modify-write
+// of the same comment by concurrent jobs, and GitHub offers no conditional
+// update to make that race-free.
+export function markerFor(projectKey: string, psVersion?: string | null): string {
+  if (psVersion) return `<!-- prestaflow-run:${projectKey}:ps-${psVersion} -->`;
   return projectKey === '' ? LEGACY_MARKER : `<!-- prestaflow-run:${projectKey} -->`;
+}
+
+function title(base: string, psVersion: string | null): string {
+  return psVersion ? `${base} · PS ${psVersion}` : base;
 }
 
 // Backward-compat export — still consumed by pr-comment.ts until Task 3 replaces the finder.
@@ -66,8 +76,8 @@ function successBody(p: BuildBodyParams): string {
   const meta = metaLine(p.suites, p.psVersion);
   const perSuite = renderPerSuiteTable(p.report.suites);
   const lines = [
-    markerFor(p.projectKey),
-    `### PrestaFlow — Test report ✅`,
+    markerFor(p.projectKey, p.psVersion),
+    title(`### PrestaFlow — Test report ✅`, p.psVersion),
     ``,
     `**${p.report.total} tests passed in ${formatDuration(p.report.durationMs)}**`,
     ``,
@@ -87,8 +97,8 @@ function failureBody(p: BuildBodyParams): string {
   const meta = metaLine(p.suites, p.psVersion);
   const perSuite = renderPerSuiteTable(p.report.suites);
   const lines = [
-    markerFor(p.projectKey),
-    `### PrestaFlow — Test report`,
+    markerFor(p.projectKey, p.psVersion),
+    title(`### PrestaFlow — Test report`, p.psVersion),
     ``,
     `**Result: ❌ ${p.report.failed} failures out of ${p.report.total} tests**`,
     ``,

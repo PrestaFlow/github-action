@@ -99,6 +99,48 @@ describe('postOrUpdatePrComment', () => {
     expect(createComment).toHaveBeenCalledTimes(1);
   });
 
+  it('does not update the comment of another project', async () => {
+    listComments.mockResolvedValue({ data: [{ id: 10, body: '<!-- prestaflow-run:pk_B -->\nB' }] });
+
+    await postOrUpdatePrComment({ token: 't', body: '<!-- prestaflow-run:pk_A -->\nA' });
+
+    expect(updateComment).not.toHaveBeenCalled();
+    expect(createComment).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps one comment per PS version (matrix legs do not overwrite each other)', async () => {
+    listComments.mockResolvedValue({
+      data: [
+        { id: 81, body: '<!-- prestaflow-run:pk_X:ps-8.1.7 -->\nold 8' },
+        { id: 90, body: '<!-- prestaflow-run:pk_X:ps-9.0.0 -->\nold 9' },
+      ],
+    });
+
+    await postOrUpdatePrComment({ token: 't', body: '<!-- prestaflow-run:pk_X:ps-9.0.0 -->\nnew 9' });
+
+    expect(updateComment).toHaveBeenCalledTimes(1);
+    expect(updateComment).toHaveBeenCalledWith(expect.objectContaining({ comment_id: 90 }));
+    expect(createComment).not.toHaveBeenCalled();
+  });
+
+  it('does not match a marker that is only a prefix of another', async () => {
+    listComments.mockResolvedValue({ data: [{ id: 81, body: '<!-- prestaflow-run:pk_X:ps-8.1.7 -->\nold' }] });
+
+    await postOrUpdatePrComment({ token: 't', body: '<!-- prestaflow-run:pk_X -->\nnew' });
+
+    expect(updateComment).not.toHaveBeenCalled();
+    expect(createComment).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not let a per-version comment adopt the legacy comment', async () => {
+    listComments.mockResolvedValue({ data: [{ id: 55, body: '<!-- prestaflow-report -->\nlegacy' }] });
+
+    await postOrUpdatePrComment({ token: 't', body: '<!-- prestaflow-run:pk_X:ps-8.1.7 -->\nnew' });
+
+    expect(updateComment).not.toHaveBeenCalled();
+    expect(createComment).toHaveBeenCalledTimes(1);
+  });
+
   it('matches legacy marker (startsWith prestaflow-report)', async () => {
     listComments.mockResolvedValue({
       data: [{ id: 55, body: '<!-- prestaflow-report -->\nlegacy' }],
