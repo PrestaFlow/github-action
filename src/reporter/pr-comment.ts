@@ -6,13 +6,14 @@ export interface PostParams {
   body: string;
 }
 
-const MARKER_PATTERNS = ['<!-- prestaflow-run:', '<!-- prestaflow-report -->'];
+const LEGACY_MARKER = '<!-- prestaflow-report -->';
 const MAX_PAGES = 5;
 const PER_PAGE = 100;
 
-function isPrestaflowComment(body: string | null | undefined): boolean {
-  const b = body ?? '';
-  return MARKER_PATTERNS.some((p) => b.startsWith(p));
+// The body built by buildCommentBody starts with its marker line
+// (one marker per project and PS version, see markerFor).
+function firstLine(body: string | null | undefined): string {
+  return (body ?? '').split('\n', 1)[0].trim();
 }
 
 async function findExistingComment(
@@ -20,16 +21,25 @@ async function findExistingComment(
   owner: string,
   repo: string,
   issue_number: number,
+  marker: string,
 ): Promise<{ id: number } | null> {
+  // Exact match on the marker line: a prefix match let a project (or a matrix
+  // leg) overwrite another one's comment. A non-versioned marker may still
+  // take over the pre-v2 legacy comment, if no exact match exists.
+  const mayAdoptLegacy = marker.startsWith('<!-- prestaflow-run:') && !marker.includes(':ps-');
+  let legacy: { id: number } | null = null;
   for (let page = 1; page <= MAX_PAGES; page++) {
     const { data } = await octokit.rest.issues.listComments({
       owner, repo, issue_number, per_page: PER_PAGE, page,
     });
-    const hit = data.find((c: { body?: string | null }) => isPrestaflowComment(c.body));
-    if (hit) return { id: hit.id as number };
-    if (data.length < PER_PAGE) return null;
+    for (const c of data as Array<{ id: number; body?: string | null }>) {
+      const line = firstLine(c.body);
+      if (line === marker) return { id: c.id };
+      if (mayAdoptLegacy && !legacy && line === LEGACY_MARKER) legacy = { id: c.id };
+    }
+    if (data.length < PER_PAGE) break;
   }
-  return null;
+  return legacy;
 }
 
 export async function postOrUpdatePrComment(p: PostParams): Promise<void> {
@@ -43,7 +53,7 @@ export async function postOrUpdatePrComment(p: PostParams): Promise<void> {
     const { owner, repo } = ctx.repo;
     const octokit = github.getOctokit(p.token);
 
-    const existing = await findExistingComment(octokit, owner, repo, issueNumber);
+    const existing = await findExistingComment(octokit, owner, repo, issueNumber, firstLine(p.body));
     if (existing) {
       await octokit.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body: p.body });
       core.info(`Updated PR comment #${existing.id}`);
