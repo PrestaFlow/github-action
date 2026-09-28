@@ -11,6 +11,23 @@ Run [PrestaFlow](https://prestaflow.io) tests in your GitHub Actions workflows.
     projectId: '42'
 ```
 
+## Running a subset of suites
+
+```yaml
+- uses: PrestaFlow/github-action@v2
+  with:
+    token: ${{ secrets.PRESTAFLOW_TOKEN }}
+    projectId: '42'
+    suites: 'BackOffice,FrontOffice/Checkout'
+```
+
+`suites` takes comma-separated sub-folders of your tests directory (nested paths are
+allowed). The action passes them to the library as `PRESTAFLOW_SUITES`. A name that
+matches no folder fails the run rather than running zero tests.
+
+This needs **prestaflow/php-library 1.8.0 or later**. Older versions ignore it and run
+every suite.
+
 ## With Flashlight (auto-provision PrestaShop)
 
 ```yaml
