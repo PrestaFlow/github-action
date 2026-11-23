@@ -126375,11 +126375,13 @@ function flashlightDefaults() {
     };
 }
 function flashlightForced(foUrl, psVersion) {
-    return {
+    const forced = {
         PRESTAFLOW_FO_URL: foUrl,
         PRESTAFLOW_BO_URL: `${foUrl}${exports.FLASHLIGHT_ADMIN_DIR}/`,
-        PRESTAFLOW_PS_VERSION: psVersion,
     };
+    if (psVersion)
+        forced.PRESTAFLOW_PS_VERSION = psVersion;
+    return forced;
 }
 /**
  * Build the .env.local body. phpdotenv loads a single file (the first of
@@ -126582,6 +126584,100 @@ function resolveMount(p) {
 
 /***/ }),
 
+/***/ 49800:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.psVersionFromImageTag = psVersionFromImageTag;
+exports.readPsVersionFromContainer = readPsVersionFromContainer;
+exports.resolvePsVersion = resolvePsVersion;
+const core = __importStar(__nccwpck_require__(37484));
+const exec = __importStar(__nccwpck_require__(95236));
+/**
+ * PrestaShop version carried by a Flashlight image tag: `8.2.8-nginx`,
+ * `8.2.8-8.1-fpm-alpine3.21-nginx` and `9.0.0` all start with it. Tags without
+ * a version (`latest`, `nightly`, `base-8.2-…`) return null.
+ *
+ * prestaflow/php-library only parses a bare version (`1.7.8.11`, `8.2.8`), and
+ * fails the whole run on anything else, so the tag is never passed as is.
+ */
+function psVersionFromImageTag(tag) {
+    const m = /^(\d+\.\d+\.\d+(?:\.\d+)?)(?:-|$)/.exec(tag.trim());
+    return m ? m[1] : null;
+}
+// Every supported release (1.7, 8, 9) declares its version in AppKernel.
+const READ_VERSION_PHP = `echo preg_match("/const VERSION = '([0-9.]+)'/", (string) @file_get_contents('/var/www/html/app/AppKernel.php'), $m) ? $m[1] : '';`;
+/** Read the version from the running shop, for a tag that does not carry it. */
+async function readPsVersionFromContainer(composePath) {
+    let output = '';
+    try {
+        await exec.exec('docker', [
+            'compose', '-f', composePath, 'exec', '-T', 'prestashop', 'php', '-r', READ_VERSION_PHP,
+        ], { ignoreReturnCode: true, silent: true, listeners: { stdout: (b) => { output += b.toString(); } } });
+    }
+    catch {
+        return null;
+    }
+    const version = output.trim();
+    return psVersionFromImageTag(version) === version ? version : null;
+}
+/**
+ * Version given to the library as PRESTAFLOW_PS_VERSION: from the tag, else
+ * from the shop. Null when neither says: the variable is then left to the
+ * user's dotenv file or step env, with a warning.
+ */
+async function resolvePsVersion(p) {
+    const fromTag = psVersionFromImageTag(p.imageTag);
+    if (fromTag)
+        return fromTag;
+    const fromShop = await readPsVersionFromContainer(p.composePath);
+    if (fromShop) {
+        core.info(`Flashlight image ${p.imageTag}: PrestaShop ${fromShop} read from the shop.`);
+        return fromShop;
+    }
+    core.warning(`Could not tell the PrestaShop version of Flashlight image "${p.imageTag}": PRESTAFLOW_PS_VERSION is not set by the action. `
+        + 'Set it with env: on the step, or use a versioned ps-version (e.g. 8.2.8-nginx).');
+    return null;
+}
+
+
+/***/ }),
+
 /***/ 38422:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -126718,6 +126814,7 @@ const inputs_1 = __nccwpck_require__(38422);
 const mount_1 = __nccwpck_require__(71255);
 const compose_template_1 = __nccwpck_require__(17513);
 const dotenv_1 = __nccwpck_require__(58570);
+const ps_version_1 = __nccwpck_require__(49800);
 const install_module_1 = __nccwpck_require__(56886);
 const docker_1 = __nccwpck_require__(60704);
 const suites_1 = __nccwpck_require__(24529);
@@ -126800,13 +126897,15 @@ async function run() {
             // through `env:` is both invisible to the lib and blocks the same key
             // from the file. Hence: everything goes into .env.local (user file and
             // step env merged in), and those keys are stripped from the PHP env.
+            // The image tag (8.2.8-nginx, latest…) is not a version the library parses.
+            const psVersion = await (0, ps_version_1.resolvePsVersion)({ imageTag: inputs.psVersion, composePath: flashlight.composePath });
             dotenv = (0, dotenv_1.writeFlashlightDotenv)({
                 workspace,
                 foUrl: `${flashlight.url}/`,
-                psVersion: inputs.psVersion,
+                psVersion,
                 processEnv: process.env,
             });
-            core.info(`Flashlight ready at ${flashlight.url} (PS ${inputs.psVersion})`);
+            core.info(`Flashlight ready at ${flashlight.url} (image ${inputs.psVersion}, PS ${psVersion ?? 'unknown'})`);
         }
         try {
             await (0, prepare_1.prepareVisualBaselines)({
