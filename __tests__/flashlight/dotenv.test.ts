@@ -7,6 +7,8 @@ import {
   renderFlashlightDotenv,
   writeFlashlightDotenv,
   FLASHLIGHT_BO_EMAIL,
+  FLASHLIGHT_FO_EMAIL,
+  FLASHLIGHT_FO_PASSWD,
   FLASHLIGHT_BO_PASSWD,
 } from '../../src/flashlight/dotenv';
 
@@ -69,6 +71,22 @@ describe('renderFlashlightDotenv', () => {
     expect(v.PRESTAFLOW_PS_VERSION).toBe(`'8.1.7'`);
     expect(v.PRESTAFLOW_BO_EMAIL).toBe(`'${FLASHLIGHT_BO_EMAIL}'`);
     expect(v.PRESTAFLOW_BO_PASSWD).toBe(`'${FLASHLIGHT_BO_PASSWD}'`);
+    expect(v.PRESTAFLOW_FO_EMAIL).toBe(`'${FLASHLIGHT_FO_EMAIL}'`);
+    expect(v.PRESTAFLOW_FO_PASSWD).toBe(`'${FLASHLIGHT_FO_PASSWD}'`);
+  });
+
+  it('user file and step env override the Flashlight demo customer', () => {
+    const fromFile = lastValues(renderFlashlightDotenv({
+      ...base, userContent: 'PRESTAFLOW_FO_EMAIL=me@shop.test\nPRESTAFLOW_FO_PASSWD=secret', processEnv: {},
+    }));
+    expect(fromFile.PRESTAFLOW_FO_EMAIL).toBe('me@shop.test');
+    expect(fromFile.PRESTAFLOW_FO_PASSWD).toBe('secret');
+
+    const fromEnv = lastValues(renderFlashlightDotenv({
+      ...base, userContent: null, processEnv: { PRESTAFLOW_FO_EMAIL: 'ci@x', PRESTAFLOW_FO_PASSWD: 'pw' },
+    }));
+    expect(fromEnv.PRESTAFLOW_FO_EMAIL).toBe(`'ci@x'`);
+    expect(fromEnv.PRESTAFLOW_FO_PASSWD).toBe(`'pw'`);
   });
 
   it('user file overrides Flashlight default credentials but not forced values', () => {

@@ -61,8 +61,9 @@ So when `flashlight: true`, the action writes a `.env.local` for the run, built 
 2. the values imposed by the Flashlight container: `PRESTAFLOW_FO_URL`,
    `PRESTAFLOW_BO_URL` (`<fo>admin-dev/`) and `PRESTAFLOW_PS_VERSION`;
 3. your own dotenv file, copied as is: `.env.local` if it exists, otherwise `.env`;
-4. the Flashlight back-office credentials: `PRESTAFLOW_BO_EMAIL=admin@prestashop.com`,
-   `PRESTAFLOW_BO_PASSWD=prestashop`.
+4. the Flashlight credentials: the back office (`PRESTAFLOW_BO_EMAIL=admin@prestashop.com`,
+   `PRESTAFLOW_BO_PASSWD=prestashop`) and the demo customer of the PrestaShop fixtures
+   (`PRESTAFLOW_FO_EMAIL=pub@prestashop.com`, `PRESTAFLOW_FO_PASSWD=123456789`).
 
 If your repository already has a `.env.local`, it is merged and put back at the end of
 the run; otherwise the generated file is removed.
@@ -78,9 +79,32 @@ the run; otherwise the generated file is removed.
     ps-version: '8.1.7'
 ```
 
-If your committed `.env` sets `PRESTAFLOW_BO_EMAIL` / `PRESTAFLOW_BO_PASSWD` for your
-local shop, they win over the Flashlight defaults: remove them from `.env`, or set the
-Flashlight ones with `env:` on the step.
+If your committed `.env` sets `PRESTAFLOW_BO_EMAIL` / `PRESTAFLOW_BO_PASSWD` (or the
+`FO_` pair) for your local shop, they win over the Flashlight defaults: remove them from
+`.env`, or set the Flashlight ones with `env:` on the step.
+
+### prestaflow/php-library 1.9.0
+
+Since 1.9.0 the library no longer signs in with the demo accounts when
+`PRESTAFLOW_FO_EMAIL` / `PRESTAFLOW_BO_EMAIL` are unset: the steps that need an
+account are skipped. With Flashlight the action provides both accounts (above).
+Without Flashlight, set them for the shop you test, for instance from secrets:
+
+```yaml
+- uses: PrestaFlow/github-action@v2
+  env:
+    PRESTAFLOW_FO_EMAIL: ${{ secrets.SHOP_CUSTOMER_EMAIL }}
+    PRESTAFLOW_FO_PASSWD: ${{ secrets.SHOP_CUSTOMER_PASSWORD }}
+    PRESTAFLOW_BO_EMAIL: ${{ secrets.SHOP_ADMIN_EMAIL }}
+    PRESTAFLOW_BO_PASSWD: ${{ secrets.SHOP_ADMIN_PASSWORD }}
+  with:
+    token: ${{ secrets.PRESTAFLOW_TOKEN }}
+```
+
+The settings added in 1.9.0 go through `env:` like any other `PRESTAFLOW_*` variable:
+`PRESTAFLOW_BO_LOCALE`, `PRESTAFLOW_SHOP_ID`, `PRESTAFLOW_VISUAL_BASELINE`,
+`PRESTAFLOW_ONLY_TEST`, `PRESTAFLOW_BROWSER_WS` / `PRESTAFLOW_BROWSER_WS_TOKEN`…
+See the [configuration reference](https://prestaflow.io/docs/library/1/getting-started/configuration).
 
 ## PR comment
 
