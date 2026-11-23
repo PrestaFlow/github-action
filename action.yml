@@ -22,7 +22,7 @@ inputs:
     required: false
     default: 'false'
   ps-version:
-    description: "Flashlight image tag (e.g. 9.0.0, 8.1.7, latest). Ignored when flashlight is false."
+    description: "Flashlight image tag (e.g. 9.0.0, 8.2.8-nginx, latest). The PrestaShop version given to the tests (PRESTAFLOW_PS_VERSION) is read from the tag, or from the shop for a tag without version. Ignored when flashlight is false."
     required: false
     default: 'latest'
   flashlight-mount:

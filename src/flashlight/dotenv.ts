@@ -52,7 +52,8 @@ function block(title: string, vars: Record<string, string>): string[] {
 
 export interface RenderParams {
   foUrl: string;
-  psVersion: string;
+  /** Bare PrestaShop version, or null when it could not be told (not written then). */
+  psVersion: string | null;
   /** Raw content of the user's dotenv file (.env.local or .env), if any. */
   userContent: string | null;
   /** PRESTAFLOW_* variables from the Action's process env (step `env:`). */
@@ -68,12 +69,13 @@ export function flashlightDefaults(): Record<string, string> {
   };
 }
 
-export function flashlightForced(foUrl: string, psVersion: string): Record<string, string> {
-  return {
+export function flashlightForced(foUrl: string, psVersion: string | null): Record<string, string> {
+  const forced: Record<string, string> = {
     PRESTAFLOW_FO_URL: foUrl,
     PRESTAFLOW_BO_URL: `${foUrl}${FLASHLIGHT_ADMIN_DIR}/`,
-    PRESTAFLOW_PS_VERSION: psVersion,
   };
+  if (psVersion) forced.PRESTAFLOW_PS_VERSION = psVersion;
+  return forced;
 }
 
 /**
@@ -103,7 +105,7 @@ export function renderFlashlightDotenv(p: RenderParams): string {
 export interface WriteParams {
   workspace: string;
   foUrl: string;
-  psVersion: string;
+  psVersion: string | null;
   processEnv: NodeJS.ProcessEnv;
 }
 

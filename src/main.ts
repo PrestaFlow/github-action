@@ -5,6 +5,7 @@ import { parseInputs } from './inputs';
 import { resolveMount } from './flashlight/mount';
 import { renderCompose } from './flashlight/compose-template';
 import { writeFlashlightDotenv, DotenvHandle } from './flashlight/dotenv';
+import { resolvePsVersion } from './flashlight/ps-version';
 import { moduleToInstall, installModule } from './flashlight/install-module';
 import { assertDockerAvailable, startFlashlight, pickPort, FlashlightHandle } from './flashlight/docker';
 import { suitesEnv } from './runner/suites';
@@ -90,13 +91,15 @@ export async function run(): Promise<void> {
       // through `env:` is both invisible to the lib and blocks the same key
       // from the file. Hence: everything goes into .env.local (user file and
       // step env merged in), and those keys are stripped from the PHP env.
+      // The image tag (8.2.8-nginx, latest…) is not a version the library parses.
+      const psVersion = await resolvePsVersion({ imageTag: inputs.psVersion, composePath: flashlight.composePath });
       dotenv = writeFlashlightDotenv({
         workspace,
         foUrl: `${flashlight.url}/`,
-        psVersion: inputs.psVersion,
+        psVersion,
         processEnv: process.env,
       });
-      core.info(`Flashlight ready at ${flashlight.url} (PS ${inputs.psVersion})`);
+      core.info(`Flashlight ready at ${flashlight.url} (image ${inputs.psVersion}, PS ${psVersion ?? 'unknown'})`);
     }
 
     try {

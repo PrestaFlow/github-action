@@ -59,7 +59,9 @@ So when `flashlight: true`, the action writes a `.env.local` for the run, built 
 
 1. every `PRESTAFLOW_*` variable set on the step with `env:` (works whatever `variables_order` is);
 2. the values imposed by the Flashlight container: `PRESTAFLOW_FO_URL`,
-   `PRESTAFLOW_BO_URL` (`<fo>admin-dev/`) and `PRESTAFLOW_PS_VERSION`;
+   `PRESTAFLOW_BO_URL` (`<fo>admin-dev/`) and `PRESTAFLOW_PS_VERSION`. The version is
+   read from the `ps-version` tag (`8.2.8-nginx` gives `8.2.8`), or from the shop for a
+   tag without version such as `latest`;
 3. your own dotenv file, copied as is: `.env.local` if it exists, otherwise `.env`;
 4. the Flashlight credentials: the back office (`PRESTAFLOW_BO_EMAIL=admin@prestashop.com`,
    `PRESTAFLOW_BO_PASSWD=prestashop`) and the demo customer of the PrestaShop fixtures

@@ -75,6 +75,14 @@ describe('renderFlashlightDotenv', () => {
     expect(v.PRESTAFLOW_FO_PASSWD).toBe(`'${FLASHLIGHT_FO_PASSWD}'`);
   });
 
+  it('leaves PRESTAFLOW_PS_VERSION to the user when the version is unknown', () => {
+    const v = lastValues(renderFlashlightDotenv({
+      ...base, psVersion: null, userContent: 'PRESTAFLOW_PS_VERSION=8.2.8', processEnv: {},
+    }));
+    expect(v.PRESTAFLOW_PS_VERSION).toBe('8.2.8');
+    expect(v.PRESTAFLOW_FO_URL).toBe(`'http://localhost:8000/'`);
+  });
+
   it('user file and step env override the Flashlight demo customer', () => {
     const fromFile = lastValues(renderFlashlightDotenv({
       ...base, userContent: 'PRESTAFLOW_FO_EMAIL=me@shop.test\nPRESTAFLOW_FO_PASSWD=secret', processEnv: {},
