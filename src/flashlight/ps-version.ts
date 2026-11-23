@@ -14,22 +14,35 @@ export function psVersionFromImageTag(tag: string): string | null {
   return m ? m[1] : null;
 }
 
-// Every supported release (1.7, 8, 9) declares its version in AppKernel.
-const READ_VERSION_PHP =
-  `echo preg_match("/const VERSION = '([0-9.]+)'/", (string) @file_get_contents('/var/www/html/app/AppKernel.php'), $m) ? $m[1] : '';`;
-
-/** Read the version from the running shop, for a tag that does not carry it. */
-export async function readPsVersionFromContainer(composePath: string): Promise<string | null> {
+/** Last line of a command run in the PrestaShop container, '' when it fails. */
+async function execInShop(composePath: string, command: string[]): Promise<string> {
   let output = '';
   try {
-    await exec.exec('docker', [
-      'compose', '-f', composePath, 'exec', '-T', 'prestashop', 'php', '-r', READ_VERSION_PHP,
-    ], { ignoreReturnCode: true, silent: true, listeners: { stdout: (b: Buffer) => { output += b.toString(); } } });
+    await exec.exec('docker', ['compose', '-f', composePath, 'exec', '-T', 'prestashop', ...command], {
+      ignoreReturnCode: true, silent: true, listeners: { stdout: (b: Buffer) => { output += b.toString(); } },
+    });
   } catch {
-    return null;
+    return '';
   }
-  const version = output.trim();
-  return psVersionFromImageTag(version) === version ? version : null;
+  return output.trim().split('\n').pop()?.trim() ?? '';
+}
+
+const isBareVersion = (v: string): boolean => v !== '' && psVersionFromImageTag(v) === v;
+
+// Fallback for an image without PS_VERSION: releases up to 9.1 declare it in AppKernel.
+const READ_APPKERNEL_PHP =
+  `echo preg_match("/const VERSION = '([0-9.]+)'/", (string) @file_get_contents('/var/www/html/app/AppKernel.php'), $m) ? $m[1] : '';`;
+
+/**
+ * Read the version from the running shop, for a tag that does not carry it.
+ * Flashlight images declare it in their PS_VERSION environment variable
+ * (`latest` is 9.2.1 at the time of writing).
+ */
+export async function readPsVersionFromContainer(composePath: string): Promise<string | null> {
+  const fromEnv = await execInShop(composePath, ['printenv', 'PS_VERSION']);
+  if (isBareVersion(fromEnv)) return fromEnv;
+  const fromKernel = await execInShop(composePath, ['php', '-r', READ_APPKERNEL_PHP]);
+  return isBareVersion(fromKernel) ? fromKernel : null;
 }
 
 /**

@@ -37,11 +37,20 @@ describe('psVersionFromImageTag', () => {
 });
 
 describe('readPsVersionFromContainer', () => {
-  it('reads the version printed by the shop', async () => {
+  it('reads PS_VERSION from the image environment', async () => {
     execMock.mockImplementation(execPrinting('9.2.1\n'));
     await expect(readPsVersionFromContainer('/tmp/c.yml')).resolves.toBe('9.2.1');
     const args = execMock.mock.calls[0][1] as string[];
-    expect(args.slice(0, 6)).toEqual(['compose', '-f', '/tmp/c.yml', 'exec', '-T', 'prestashop']);
+    expect(args).toEqual(['compose', '-f', '/tmp/c.yml', 'exec', '-T', 'prestashop', 'printenv', 'PS_VERSION']);
+    expect(execMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back on AppKernel when PS_VERSION is missing', async () => {
+    execMock
+      .mockImplementationOnce(execPrinting(''))
+      .mockImplementationOnce(execPrinting('8.1.7'));
+    await expect(readPsVersionFromContainer('/tmp/c.yml')).resolves.toBe('8.1.7');
+    expect((execMock.mock.calls[1][1] as string[]).slice(6, 8)).toEqual(['php', '-r']);
   });
 
   it('returns null on empty or unexpected output, or when docker fails', async () => {
