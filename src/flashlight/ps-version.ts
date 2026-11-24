@@ -29,9 +29,17 @@ async function execInShop(composePath: string, command: string[]): Promise<strin
 
 const isBareVersion = (v: string): boolean => v !== '' && psVersionFromImageTag(v) === v;
 
-// Fallback for an image without PS_VERSION: releases up to 9.1 declare it in AppKernel.
-const READ_APPKERNEL_PHP =
-  `echo preg_match("/const VERSION = '([0-9.]+)'/", (string) @file_get_contents('/var/www/html/app/AppKernel.php'), $m) ? $m[1] : '';`;
+/**
+ * PHP code (for `php -r`) printing the version declared in the shop's sources,
+ * '' when none is found. Fallback for an image without PS_VERSION.
+ * From 8.0 the literal sits in src/Core/Version.php
+ * (`public const VERSION = '8.2.8';`), and AppKernel only refers to it
+ * (`const VERSION = Version::VERSION;`); 1.7 declares it in AppKernel.
+ */
+export function readSourceVersionPhp(root = '/var/www/html'): string {
+  const files = ['src/Core/Version.php', 'app/AppKernel.php'].map(f => `'${root}/${f}'`).join(', ');
+  return `foreach ([${files}] as $f) { if (preg_match("/const VERSION = '([0-9.]+)'/", (string) @file_get_contents($f), $m)) { echo $m[1]; break; } }`;
+}
 
 /**
  * Read the version from the running shop, for a tag that does not carry it.
@@ -41,8 +49,8 @@ const READ_APPKERNEL_PHP =
 export async function readPsVersionFromContainer(composePath: string): Promise<string | null> {
   const fromEnv = await execInShop(composePath, ['printenv', 'PS_VERSION']);
   if (isBareVersion(fromEnv)) return fromEnv;
-  const fromKernel = await execInShop(composePath, ['php', '-r', READ_APPKERNEL_PHP]);
-  return isBareVersion(fromKernel) ? fromKernel : null;
+  const fromSources = await execInShop(composePath, ['php', '-r', readSourceVersionPhp()]);
+  return isBareVersion(fromSources) ? fromSources : null;
 }
 
 /**
