@@ -126624,6 +126624,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.psVersionFromImageTag = psVersionFromImageTag;
+exports.readSourceVersionPhp = readSourceVersionPhp;
 exports.readPsVersionFromContainer = readPsVersionFromContainer;
 exports.resolvePsVersion = resolvePsVersion;
 const core = __importStar(__nccwpck_require__(37484));
@@ -126654,8 +126655,17 @@ async function execInShop(composePath, command) {
     return output.trim().split('\n').pop()?.trim() ?? '';
 }
 const isBareVersion = (v) => v !== '' && psVersionFromImageTag(v) === v;
-// Fallback for an image without PS_VERSION: releases up to 9.1 declare it in AppKernel.
-const READ_APPKERNEL_PHP = `echo preg_match("/const VERSION = '([0-9.]+)'/", (string) @file_get_contents('/var/www/html/app/AppKernel.php'), $m) ? $m[1] : '';`;
+/**
+ * PHP code (for `php -r`) printing the version declared in the shop's sources,
+ * '' when none is found. Fallback for an image without PS_VERSION.
+ * From 8.0 the literal sits in src/Core/Version.php
+ * (`public const VERSION = '8.2.8';`), and AppKernel only refers to it
+ * (`const VERSION = Version::VERSION;`); 1.7 declares it in AppKernel.
+ */
+function readSourceVersionPhp(root = '/var/www/html') {
+    const files = ['src/Core/Version.php', 'app/AppKernel.php'].map(f => `'${root}/${f}'`).join(', ');
+    return `foreach ([${files}] as $f) { if (preg_match("/const VERSION = '([0-9.]+)'/", (string) @file_get_contents($f), $m)) { echo $m[1]; break; } }`;
+}
 /**
  * Read the version from the running shop, for a tag that does not carry it.
  * Flashlight images declare it in their PS_VERSION environment variable
@@ -126665,8 +126675,8 @@ async function readPsVersionFromContainer(composePath) {
     const fromEnv = await execInShop(composePath, ['printenv', 'PS_VERSION']);
     if (isBareVersion(fromEnv))
         return fromEnv;
-    const fromKernel = await execInShop(composePath, ['php', '-r', READ_APPKERNEL_PHP]);
-    return isBareVersion(fromKernel) ? fromKernel : null;
+    const fromSources = await execInShop(composePath, ['php', '-r', readSourceVersionPhp()]);
+    return isBareVersion(fromSources) ? fromSources : null;
 }
 /**
  * Version given to the library as PRESTAFLOW_PS_VERSION: from the tag, else

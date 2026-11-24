@@ -2,7 +2,11 @@ const execMock = jest.fn();
 jest.mock('@actions/exec', () => ({ exec: (...a: unknown[]) => execMock(...a) }));
 
 import * as core from '@actions/core';
-import { psVersionFromImageTag, readPsVersionFromContainer, resolvePsVersion } from '../../src/flashlight/ps-version';
+import { execFileSync } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { psVersionFromImageTag, readPsVersionFromContainer, readSourceVersionPhp, resolvePsVersion } from '../../src/flashlight/ps-version';
 
 type ExecOpts = { listeners?: { stdout?: (b: Buffer) => void } };
 
@@ -45,7 +49,7 @@ describe('readPsVersionFromContainer', () => {
     expect(execMock).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back on AppKernel when PS_VERSION is missing', async () => {
+  it('falls back on the shop sources when PS_VERSION is missing', async () => {
     execMock
       .mockImplementationOnce(execPrinting(''))
       .mockImplementationOnce(execPrinting('8.1.7'));
@@ -60,6 +64,38 @@ describe('readPsVersionFromContainer', () => {
     await expect(readPsVersionFromContainer('/tmp/c.yml')).resolves.toBeNull();
     execMock.mockRejectedValue(new Error('docker gone'));
     await expect(readPsVersionFromContainer('/tmp/c.yml')).resolves.toBeNull();
+  });
+});
+
+// The snippet itself, run with the local php on the shapes of the real files
+// (checked in the 1.7.8.11, 8.1.7, 8.2.8, 9.0.0 and 9.2.0 Flashlight images).
+const hasPhp = (() => { try { execFileSync('php', ['-v'], { stdio: 'ignore' }); return true; } catch { return false; } })();
+(hasPhp ? describe : describe.skip)('readSourceVersionPhp', () => {
+  function shop(files: Record<string, string>): string {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-src-'));
+    for (const [f, body] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true });
+      fs.writeFileSync(path.join(root, f), body);
+    }
+    return root;
+  }
+  const run = (root: string): string => execFileSync('php', ['-r', readSourceVersionPhp(root)]).toString();
+
+  it('reads src/Core/Version.php (8.0 and later), where AppKernel only refers to it', () => {
+    const root = shop({
+      'src/Core/Version.php': "<?php\nclass Version\n{\n    public const VERSION = '8.2.8';\n}\n",
+      'app/AppKernel.php': "<?php\nclass AppKernel\n{\n    const VERSION = Version::VERSION;\n}\n",
+    });
+    expect(run(root)).toBe('8.2.8');
+  });
+
+  it('reads app/AppKernel.php on 1.7', () => {
+    const root = shop({ 'app/AppKernel.php': "<?php\nclass AppKernel\n{\n    const VERSION = '1.7.8.11';\n}\n" });
+    expect(run(root)).toBe('1.7.8.11');
+  });
+
+  it('prints nothing when neither declares it', () => {
+    expect(run(shop({}))).toBe('');
   });
 });
 
